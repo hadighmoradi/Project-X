@@ -2,6 +2,8 @@
 
 # Project X
 
+[🌐 Visit the live project site](https://hadighmoradi.github.io/Project-X/)
+
 ### An experimental language and native toolchain
 
 **C++17** · **CMake** · **x64 (x86-64)** · **Windows/Linux roadmap; macOS later**
