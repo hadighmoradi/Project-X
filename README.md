@@ -36,7 +36,7 @@ My plan is to support **x86-32 (X32) and x86-64 (X64)** on Windows and Linux, wi
 
 I started this project because I want fast programs and small native executables without making code hard to write. The compiler is still experimental, so these are goals to work toward, not results I can claim today.
 
-I call the project **X** for now. Its name is still open: I would like people to suggest names, talk through the ideas, and vote on a shortlist. The repository is not public yet, and Discussions are not enabled, so suggestions and voting have not opened. I will add the direct link when the repository is public and Discussions are ready. See [Project vision and naming](docs/PROJECT_VISION_AND_NAMING.md).
+I call the project **X** for now; its final name is still open. The repository is public and GitHub Discussions are open. You can suggest a name in [Ideas](https://github.com/hadighmoradi/Project-X/discussions/categories/ideas), one idea per discussion, and briefly explain why it fits. After the community has discussed the suggestions, I will shortlist candidates and open a poll in [Polls](https://github.com/hadighmoradi/Project-X/discussions/categories/polls). The name with the most votes when the poll closes will replace X. See [Project vision and naming](docs/PROJECT_VISION_AND_NAMING.md).
 
 ## Current checkpoint
 
@@ -85,9 +85,9 @@ The public-facing milestone summary is in [Development history](docs/DEVELOPMENT
 - [Current engineering status](docs/STATUS.md)
 - [Architecture](docs/ARCHITECTURE.md)
 - [Licensing policy and release gaps](docs/LICENSE_POLICY.md)
-- [Project page](index.html)
+- [Live project page](https://hadighmoradi.github.io/Project-X/)
 - [Project vision and naming](docs/PROJECT_VISION_AND_NAMING.md)
-- [Readable project guide](project-guide.html)
+- [Readable project guide](https://hadighmoradi.github.io/Project-X/project-guide.html)
 
 ## Licensing
 

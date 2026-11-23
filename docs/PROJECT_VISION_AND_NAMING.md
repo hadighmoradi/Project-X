@@ -10,7 +10,7 @@ That is my goal for the language, not a claim about the current compiler. The co
 
 For now, I call the project **X**. It is a placeholder. I would like people who follow the project to suggest names, talk through the ideas, and then vote. The name with the most votes at the end will replace X.
 
-The repository is not public yet, and Discussions are not enabled. Suggestions and voting have not opened. Once the repository is public and its discussion area is ready, I will add the direct link to the project page.
+The repository is public and Discussions are enabled. Post one name idea per discussion in [Ideas](https://github.com/hadighmoradi/Project-X/discussions/categories/ideas) and briefly explain why you chose it. After discussing and shortlisting candidates, I will open a poll in [Polls](https://github.com/hadighmoradi/Project-X/discussions/categories/polls). The name with the most votes when the poll closes will replace X.
 
 ### Proposed process
 

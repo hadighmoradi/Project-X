@@ -29,4 +29,4 @@ Here X32 means 32-bit x86, not Linux x32 ABI. AMD64 is the standard technical na
 
 ## Community naming
 
-X is the temporary working name; the final language name is open for community choice. The planned process is to collect candidates in GitHub Discussions, discuss and shortlist them, then run a public poll. The candidate with the most votes when the poll closes is intended to become the language name. The poll is not live until the public repository and its Discussions space are connected. See [Project vision and naming](PROJECT_VISION_AND_NAMING.md).
+X is the temporary working name; the final language name is open for community choice. The repository is public and Discussions are enabled. Post candidates in [Ideas](https://github.com/hadighmoradi/Project-X/discussions/categories/ideas); after discussion and shortlisting, I will open the poll in [Polls](https://github.com/hadighmoradi/Project-X/discussions/categories/polls). No final-name poll has been published yet. See [Project vision and naming](PROJECT_VISION_AND_NAMING.md).
