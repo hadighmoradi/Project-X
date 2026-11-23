@@ -1,0 +1,39 @@
+# CMake and generated build outputs
+/build*/
+/out/
+/cmake-build-*/
+
+# Local evidence and packaging trees (not source)
+/reports/
+/references/
+/validation/
+/deliverables/
+/runtime-*/
+/XForm_test/
+/docs/internal/
+
+# Compiled artifacts
+*.exe
+*.dll
+*.obj
+*.o
+*.ilk
+*.pdb
+*.lib
+*.exp
+*.idb
+*.pch
+*.tlog
+
+# IDE state
+.vs/
+.vscode/
+*.user
+*.suo
+*.VC.db
+*.VC.VC.opendb
+
+# Temporary files
+*.tmp
+*.bak
+*.swp

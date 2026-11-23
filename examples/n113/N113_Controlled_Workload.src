@@ -1,0 +1,56 @@
+module N113ControlledWorkload;
+
+// Project-owned controlled workload for N113 integration analysis.
+// This is an authored X-language program, not a synthetic IR fixture and not a user application.
+
+private function SumPair(int left, int right) returns int {
+    return left + right;
+}
+
+private function SumMeasurement(double left, double right) returns double {
+    return left + right;
+}
+
+private function BoundTotal(int value, int maximum) returns int {
+    int bounded = value;
+    if (value > maximum) {
+        bounded = maximum;
+    } else {
+        bounded = value;
+    }
+    return bounded;
+}
+
+public function Main() returns int {
+    int sample_a = 11;
+    int sample_b = 13;
+    int sample_c = 17;
+    int sample_d = 19;
+    int sample_e = 23;
+    int sample_f = 29;
+    int offset = 31;
+    int reserve = 37;
+
+    double measure_a = 1.25;
+    double measure_b = 2.50;
+    double measure_c = 3.75;
+    double measure_d = 4.50;
+    double measurement_total = SumMeasurement(
+        measure_a + measure_b,
+        measure_c + measure_d
+    );
+
+    int index = 0;
+    int accumulated = 0;
+    while (index < 6) {
+        if (index < 3) {
+            accumulated = accumulated + SumPair(sample_a, sample_b);
+        } else {
+            accumulated = accumulated + SumPair(sample_c, sample_d);
+        }
+        index = index + 1;
+    }
+
+    int bounded = BoundTotal(accumulated, sample_e + sample_f);
+    return bounded + offset + reserve;
+}
