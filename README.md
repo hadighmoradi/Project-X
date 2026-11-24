@@ -106,3 +106,9 @@ The compiler's GPL license does not automatically make every independently writt
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution requirements, file notices, third-party material, and the licenses that apply to code and documentation. When reporting engineering results, include the exact source revision, host toolchain, command, and test scope.
+
+
+
+## Explore the language
+
+See the [language design page](language-design.html) for the ideas behind X, a few code examples, and the current state of the compiler. The [development process](docs/DEVELOPMENT_WORKFLOW.md) explains how completed work and test results are recorded.

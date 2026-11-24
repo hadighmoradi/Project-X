@@ -1,0 +1,228 @@
+<!-- SPDX-FileCopyrightText: 2026 Hector Moradi -->
+<!-- SPDX-License-Identifier: CC-BY-SA-4.0 -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0b1720">
+<meta name="description" content="A friendly overview of Project X, its design influences, code style, and current progress.">
+<title>Project X — Language design</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" rel="stylesheet">
+<style>
+:root{color-scheme:dark;--bg:#0b1720;--panel:#12232e;--panel2:#172d39;--line:#29414e;--ink:#edf5f4;--muted:#b2c2c7;--mint:#8be7d2;--blue:#a9c4ff;--gold:#f3ce8c;--max:1100px}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:radial-gradient(850px 500px at 90% 0,rgba(60,150,143,.17),transparent 65%),var(--bg);color:var(--ink);font:16px/1.75 system-ui,-apple-system,"Segoe UI",sans-serif}
+a{color:var(--mint);text-decoration:none}a:hover{color:#d3fff6;text-decoration:underline}
+.wrap{width:min(var(--max),calc(100% - 36px));margin:auto}
+header{position:sticky;top:0;z-index:5;background:rgba(11,23,32,.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+.nav{min-height:62px;display:flex;align-items:center;justify-content:space-between;gap:18px}
+.brand{font-weight:850;letter-spacing:.1em;color:var(--ink)}
+.links{display:flex;flex-wrap:wrap;gap:18px;font-size:13px;color:var(--muted)}
+.hero{padding:68px 0 36px;display:grid;grid-template-columns:1.3fr .7fr;gap:30px;align-items:center}
+.eyebrow,.kicker{color:var(--mint);font-size:11px;font-weight:850;letter-spacing:.13em;text-transform:uppercase}
+h1{font-size:clamp(40px,6vw,68px);line-height:1.06;letter-spacing:-.045em;margin:12px 0}
+h1 span{color:var(--mint)}h2{font-size:clamp(27px,4vw,38px);line-height:1.2;margin:6px 0 12px;letter-spacing:-.03em}
+h3{font-size:18px;line-height:1.35;margin:0 0 8px}
+.lead{font-size:19px;color:var(--muted);max-width:690px}
+.summary{padding:23px;border:1px solid var(--line);border-radius:18px;background:linear-gradient(145deg,var(--panel2),var(--panel))}
+.summary strong{display:block;font-size:31px;margin:4px 0}.summary small{color:var(--gold)}
+.pills{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}.pill{padding:5px 10px;border:1px solid var(--line);border-radius:99px;color:var(--muted);font-size:12px}
+section{padding:33px 0}.section-intro{max-width:760px;color:var(--muted);margin:0 0 20px}
+.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px}
+.card{padding:19px;border:1px solid var(--line);border-radius:16px;background:linear-gradient(145deg,rgba(18,35,46,.97),rgba(14,29,39,.94))}
+.card p{color:var(--muted);margin:0;font-size:14px}.number{color:var(--mint);font-weight:850;font-size:12px;margin-bottom:7px}
+.visual{padding:16px;border:1px solid var(--line);border-radius:18px;background:var(--panel);margin:20px 0}
+svg{display:block;width:100%;height:auto}.svgline{fill:none;stroke:#547883;stroke-width:2}.svgtile{fill:#172d39;stroke:#385563;stroke-width:1.2}.svghub{fill:#193b43;stroke:#8be7d2;stroke-width:2}.svgmuted{fill:#b2c2c7}
+.influences{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.influence{padding:17px;border:1px solid var(--line);border-radius:14px;background:rgba(18,35,46,.72)}
+.influence p{margin:0;color:var(--muted);font-size:14px}
+.codegrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+pre{margin:10px 0 0;padding:16px;border:1px solid var(--line);border-radius:12px;background:#07121a;color:#c9f3e9;overflow:auto;font:13px/1.65 ui-monospace,Consolas,monospace}
+.note{border-left:3px solid var(--gold);padding:12px 16px;background:rgba(243,206,140,.06);color:var(--muted);border-radius:0 12px 12px 0;margin:15px 0}
+table{width:100%;border-collapse:collapse;margin:15px 0}th,td{padding:11px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}th{font-size:13px;color:var(--mint)}td{font-size:14px;color:var(--muted)}
+.actions{display:flex;flex-wrap:wrap;gap:11px;margin:19px 0}.button{display:inline-flex;padding:10px 15px;border-radius:11px;background:var(--mint);color:#08211e;font-weight:800;font-size:14px}.button:hover{color:#08211e;background:#b8ffef;text-decoration:none}.button.secondary{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.fa{direction:rtl;text-align:right;font-family:"Vazirmatn",Tahoma,system-ui,sans-serif}.fa .note{border-left:0;border-right:3px solid var(--gold);border-radius:12px 0 0 12px}.fa td,.fa th{text-align:right}.fa pre{direction:ltr;text-align:left}
+footer{border-top:1px solid var(--line);padding:22px 0 35px;color:var(--muted);font-size:13px;display:flex;justify-content:space-between;gap:16px}
+@media(max-width:760px){.hero{grid-template-columns:1fr;padding-top:42px}.grid{grid-template-columns:1fr 1fr}.codegrid{grid-template-columns:1fr}.links{gap:10px}.influences{grid-template-columns:1fr}}
+@media(max-width:520px){.wrap{width:calc(100% - 26px)}.nav{align-items:flex-start;padding:13px 0}.links{justify-content:flex-end;font-size:12px}.grid{grid-template-columns:1fr}footer{display:block}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+<header><div class="wrap nav"><a class="brand" href="index.html">PROJECT X</a><nav class="links"><a href="index.html">Home</a><a href="#ideas">Design ideas</a><a href="#syntax">Code style</a><a href="#status">Progress</a><a href="#fa" lang="fa">فارسی</a></nav></div></header>
+<main class="wrap">
+<section class="hero">
+<div><div class="eyebrow">A language taking shape</div><h1>Simple to write.<br><span>Native by design.</span></h1><p class="lead">I want X to feel comfortable to write, run as a native program, and create executables that stay small. Here is the direction, the ideas behind it, and where the project stands today.</p><div class="pills"><span class="pill">Design goals</span><span class="pill">Current compiler</span><span class="pill">What comes next</span></div></div>
+<aside class="summary"><div class="eyebrow">The project today</div><strong>X <small>working name</small></strong><div>Experimental native compiler</div><div>Current integrated target: Windows x64</div><div>Latest checkpoint: N113-G62R16</div></aside>
+</section>
+<section id="goals"><div class="kicker">01 · What matters</div><h2>What I want X to be good at</h2><p class="section-intro">The goal is to make everyday programming easy without giving up native speed, small output, or control over system resources.</p><div class="grid">
+<article class="card"><div class="number">01</div><h3>Easy to read</h3><p>Code should be clear and familiar. Simple jobs should take only a few straightforward lines.</p></article>
+<article class="card"><div class="number">02</div><h3>Fast native programs</h3><p>Programs should compile to native output. We will compare performance with equivalent C and C++ programs.</p></article>
+<article class="card"><div class="number">03</div><h3>Small executables</h3><p>A program should bring only the runtime and library parts it actually needs.</p></article>
+</div></section>
+<section id="ideas"><div class="kicker">02 · Design ideas</div><h2>Good ideas can come from different places</h2><p class="section-intro">I have looked at languages and tools that do different things well. We can learn from each one and still give X its own style.</p>
+<div class="visual"><svg viewBox="0 0 1000 440" role="img" aria-labelledby="maptitle mapdesc">
+<title id="maptitle">Ideas that shape Project X</title><desc id="mapdesc">Visual Basic inspires readable syntax, C native control, Delphi and Lazarus visual development tools, Python clear high-level APIs, Rust resource ownership and errors, Windows Batch direct system operations, and PureBasic approachable GUI.</desc>
+<path class="svgline" d="M245 85 C360 85 370 180 420 205 M245 205 C355 205 365 210 420 218 M245 325 C360 325 370 255 420 235 M755 85 C640 85 630 180 580 205 M755 205 C645 205 635 210 580 218 M755 325 C640 325 630 255 580 235"/>
+<rect class="svgtile" x="18" y="45" width="227" height="80" rx="14"/><text x="131" y="78" fill="#edf5f4" font-size="20" text-anchor="middle" font-weight="700">Visual Basic</text><text x="131" y="102" class="svgmuted" font-size="14" text-anchor="middle">Simple, readable syntax</text>
+<rect class="svgtile" x="18" y="165" width="227" height="80" rx="14"/><text x="131" y="198" fill="#edf5f4" font-size="20" text-anchor="middle" font-weight="700">C / C++</text><text x="131" y="222" class="svgmuted" font-size="14" text-anchor="middle">Native control and speed reference</text>
+<rect class="svgtile" x="18" y="285" width="227" height="80" rx="14"/><text x="131" y="318" fill="#edf5f4" font-size="20" text-anchor="middle" font-weight="700">Delphi / Lazarus</text><text x="131" y="342" class="svgmuted" font-size="14" text-anchor="middle">IDE and visual form design</text>
+<rect class="svghub" x="405" y="155" width="190" height="130" rx="22"/><text x="500" y="210" fill="#edf5f4" font-size="42" text-anchor="middle" font-weight="900">X</text><text x="500" y="242" fill="#c8efe6" font-size="16" text-anchor="middle">One clear language</text>
+<rect class="svgtile" x="755" y="45" width="227" height="80" rx="14"/><text x="868" y="78" fill="#edf5f4" font-size="20" text-anchor="middle" font-weight="700">Python</text><text x="868" y="102" class="svgmuted" font-size="14" text-anchor="middle">Helpful high-level APIs</text>
+<rect class="svgtile" x="755" y="165" width="227" height="80" rx="14"/><text x="868" y="198" fill="#edf5f4" font-size="20" text-anchor="middle" font-weight="700">Rust</text><text x="868" y="222" class="svgmuted" font-size="14" text-anchor="middle">Types and resource ownership</text>
+<rect class="svgtile" x="755" y="285" width="227" height="80" rx="14"/><text x="868" y="318" fill="#edf5f4" font-size="20" text-anchor="middle" font-weight="700">Batch · PureBasic</text><text x="868" y="342" class="svgmuted" font-size="14" text-anchor="middle">System tasks and GUI</text>
+<text x="500" y="410" class="svgmuted" font-size="14" text-anchor="middle">Useful ideas, one language with its own identity</text>
+</svg></div>
+<div class="influences">
+<article class="influence"><h3>Visual Basic — simplicity</h3><p>I like its friendly, readable style. X should make common code feel just as approachable.</p></article>
+<article class="influence"><h3>C — native control</h3><p>C is a useful reference for native performance and systems access. Speed will be measured, not assumed.</p></article>
+<article class="influence"><h3>Delphi and Lazarus — development tools</h3><p>Their integrated IDEs and visual form designers are a model for the tools I would like X to have.</p></article>
+<article class="influence"><h3>Python — everyday simplicity</h3><p>Clear high-level APIs can make common tasks easier without making the language depend on a dynamic interpreter.</p></article>
+<article class="influence"><h3>Rust — careful resource handling</h3><p>Type safety, clear errors, and predictable resource ownership are important ideas to learn from.</p></article>
+<article class="influence"><h3>Windows Batch and PureBasic</h3><p>Batch keeps common system tasks direct; PureBasic shows how GUI programming can feel approachable.</p></article>
+</div>
+</section>
+<section id="size"><div class="kicker">03 · Speed and file size</div><h2>Small output comes from engineering choices</h2><p class="section-intro">We are not taking small executable size from one particular language. It depends on how the compiler, linker, and libraries work together.</p>
+<div class="grid">
+<article class="card"><h3>Native compilation</h3><p>Programs are intended to run directly on the target system, without needing a separate language interpreter.</p></article>
+<article class="card"><h3>Modular runtime</h3><p>Only the library pieces used by a program should be included in its output.</p></article>
+<article class="card"><h3>Measure the result</h3><p>We need repeatable tests for executable size, startup time, and performance. Static linking alone does not guarantee a small file.</p></article>
+</div></section>
+<section id="syntax"><div class="kicker">04 · Code style</div><h2>A quick look at X syntax</h2><p class="section-intro">The current syntax reference uses UTF-8 .src files, braces for blocks, semicolons at the end of statements, and the function keyword.</p>
+<div class="codegrid"><article class="card"><h3>A function</h3><pre>function Add(left, right) {
+    return left + right;
+}</pre></article><article class="card"><h3>A condition</h3><pre>if (ready) {
+    PrintLine "Ready";
+} else {
+    PrintLine "Please wait";
+}</pre></article></div>
+<div class="card" style="margin-top:13px"><h3>A form description</h3><pre>Form MainForm {
+    Caption = "Customer List";
+    ClientWidth = 700;
+    ClientHeight = 450;
+
+    Button SaveButton {
+        Caption = "Save";
+        OnClick = HandleSave;
+    }
+}</pre><p style="margin-top:12px">The .frm file describes the form; the matching .src file contains the code and event handlers. The visual designer and its full compiler integration are still being developed.</p></div>
+</section>
+<section id="compiler"><div class="kicker">05 · Current compiler</div><h2>What works in the public repository</h2><p class="section-intro">The current public code is an experimental C++17 frontend with a custom x64 backend. Its integrated Windows x64 path is:</p>
+<div class="card"><pre>Source text
+    |
+    v
+parse_source
+    |
+    v
+CompilationUnit
+    |
+    v
+compile_x64_coff_program
+    |
+    v
+AMD64 COFF objects + link plan
+    |
+    v
+Windows linker
+    |
+    v
+PE32+ executable</pre></div>
+<p class="note">This is one part of the larger plan, not the finished language, runtime, standard library, IDE, or form designer.</p>
+</section>
+<section id="status"><div class="kicker">06 · Progress</div><h2>Where the project stands</h2><p class="section-intro">Latest public compiler checkpoint: <strong>N113-G62R16 · 23 November 2026</strong>.</p>
+<div class="grid">
+<article class="card"><h3>Source snapshot</h3><p>The 14-file G62R16 snapshot matches the corresponding workspace files.</p></article>
+<article class="card"><h3>Limited test</h3><p>G62R13 passed a controlled MSVC G2-on test: 56 actions, 66 machine moves, and 474 transfer bytes.</p></article>
+<article class="card"><h3>Still to do</h3><p>General edge insertion is not ready (G11 is 0/7). Full regression was not run for this checkpoint.</p></article>
+</div>
+<p>Next step: G62R17 — check expression-temporary liveness and register ownership before designing optional routing. This work has not started yet.</p>
+<table><thead><tr><th>Target</th><th>Current state</th></tr></thead><tbody>
+<tr><td>Windows x64</td><td>The integrated compiler path creates AMD64 COFF objects and a link plan; the Windows linker produces PE32+.</td></tr>
+<tr><td>Linux x64</td><td>Some ELF64 parts and limited LLD tests exist, but a complete source-to-ELF path is not established.</td></tr>
+<tr><td>x86-32</td><td>Planned; not implemented in the current backend.</td></tr>
+<tr><td>macOS</td><td>A future goal; Mach-O output and macOS validation are not ready.</td></tr>
+</tbody></table>
+</section>
+<section id="community"><div class="kicker">07 · Join in</div><h2>What would you like from X?</h2><p class="section-intro">Tell us what you want to build, which features matter most, and what you would change in the languages you already use. Your ideas will help guide the next design decisions.</p><div class="actions"><a class="button" href="https://github.com/hadighmoradi/Project-X/discussions">Join the discussion</a><a class="button secondary" href="docs/DEVELOPMENT_WORKFLOW.md">How the project is developed</a></div></section>
+
+<section class="fa" id="fa" lang="fa">
+<div class="hero" style="padding:20px 0 30px;grid-template-columns:1fr"><div><div class="eyebrow">معرفی زبان Project X</div><h1>نوشتن ساده.<br><span>اجرای Native.</span></h1><p class="lead">می‌خواهم نوشتن برنامه با X راحت باشد، خروجی Native بسازد و فایل اجرایی تا جای ممکن کم‌حجم بماند. در این صفحه از مسیر طراحی و وضعیت امروز پروژه می‌گوییم.</p></div></div>
+<div class="kicker">۰۱ · هدف‌ها</div><h2>از X چه می‌خواهیم؟</h2><p class="section-intro">می‌خواهیم برنامه‌نویسی روزمره ساده باشد، اما سرعت Native، حجم مناسب خروجی و کنترل منابع را هم از دست ندهیم.</p>
+<div class="grid">
+<article class="card"><h3>کدنویسی ساده</h3><p>کد باید روشن و قابل فهم باشد. کارهای معمول نباید به دستورهای پیچیده نیاز داشته باشند.</p></article>
+<article class="card"><h3>اجرای Native</h3><p>برنامه‌ها به خروجی Native تبدیل می‌شوند و سرعت با برنامه‌های هم‌ارز C و C++ سنجیده خواهد شد.</p></article>
+<article class="card"><h3>فایل اجرایی کم‌حجم</h3><p>هر برنامه فقط باید بخش‌هایی از Runtime و کتابخانه‌ها را همراه داشته باشد که واقعاً استفاده می‌کند.</p></article>
+</div>
+<div class="kicker" style="margin-top:30px">۰۲ · الهام‌های طراحی</div><h2>از هر زبان چه چیزی یاد می‌گیریم؟</h2><p class="section-intro">هر زبان در بخشی خوب عمل می‌کند. می‌خواهیم نکته‌های مفید را یاد بگیریم و در عین حال، X زبان خودش باشد.</p>
+<div class="influences">
+<article class="influence"><h3>Visual Basic — سادگی</h3><p>نحو دوستانه و خوانا؛ کدهای معمولی باید راحت نوشته و فهمیده شوند.</p></article>
+<article class="influence"><h3>C — کنترل Native</h3><p>دسترسی سیستمی و معیاری برای سنجش سرعت. عملکرد باید با آزمون ثابت شود.</p></article>
+<article class="influence"><h3>Delphi و Lazarus — ابزار توسعه</h3><p>IDE یکپارچه و Form Designer بصری برای ساخت برنامه‌های Windows.</p></article>
+<article class="influence"><h3>Python — راحتی کارهای روزمره</h3><p>APIهای سطح‌بالا و روشن، بدون اینکه اجرای X به مفسر پویا وابسته باشد.</p></article>
+<article class="influence"><h3>Rust — مدیریت منابع</h3><p>توجه به نوع‌ها، خطاهای روشن و مالکیت قابل پیش‌بینی منابع.</p></article>
+<article class="influence"><h3>Windows Batch و PureBasic</h3><p>از Batch سادگی کارهای سیستمی و از PureBasic تجربهٔ راحت‌تر ساخت GUI را بررسی می‌کنیم.</p></article>
+</div>
+<div class="kicker" style="margin-top:30px">۰۳ · سرعت و حجم</div><h2>خروجی کم‌حجم با انتخاب‌های مهندسی</h2><p class="section-intro">کم‌حجم بودن را از زبان خاصی کپی نمی‌کنیم. این موضوع به روش کار کامپایلر، linker و کتابخانه‌ها بستگی دارد.</p>
+<div class="grid">
+<article class="card"><h3>کامپایل Native</h3><p>برنامه مستقیم روی سیستم مقصد اجرا شود و برای هر برنامه به مفسر جدا نیاز نباشد.</p></article>
+<article class="card"><h3>Runtime ماژولار</h3><p>فقط بخش‌هایی از کتابخانه وارد خروجی شوند که برنامه واقعاً استفاده می‌کند.</p></article>
+<article class="card"><h3>اندازه‌گیری واقعی</h3><p>حجم فایل، زمان شروع و سرعت اجرا باید با آزمون‌های تکرارپذیر سنجیده شوند. Static Linking به‌تنهایی کافی نیست.</p></article>
+</div>
+<div class="kicker" style="margin-top:30px">۰۴ · شکل کدنویسی</div><h2>یک نگاه به نحو X</h2><p class="section-intro">فایل سورس با پسوند .src و متن UTF-8 است. بلوک‌ها آکولاد دارند، هر دستور با سمی‌کالن تمام می‌شود و تابع با function تعریف می‌شود.</p>
+<div class="codegrid"><article class="card"><h3>تابع</h3><pre>function Add(left, right) {
+    return left + right;
+}</pre></article><article class="card"><h3>شرط</h3><pre>if (ready) {
+    PrintLine "آماده است";
+} else {
+    PrintLine "لطفاً صبر کنید";
+}</pre></article></div>
+<div class="card" style="margin-top:13px"><h3>توصیف فرم</h3><pre>Form MainForm {
+    Caption = "فهرست مشتریان";
+    ClientWidth = 700;
+    ClientHeight = 450;
+
+    Button SaveButton {
+        Caption = "ذخیره";
+        OnClick = HandleSave;
+    }
+}</pre><p style="margin-top:12px">فایل .frm ظاهر فرم را توصیف می‌کند و فایل .src کد برنامه و رویدادها را دارد. طراح بصری و اتصال کامل آن به کامپایلر هنوز در حال توسعه است.</p></div>
+<div class="kicker" style="margin-top:30px">۰۵ · کامپایلر فعلی</div><h2>مخزن عمومی امروز چه چیزی دارد؟</h2><p class="section-intro">کد فعلی، frontend آزمایشی C++17 و backend اختصاصی x64 است. مسیر یکپارچهٔ Windows x64 این‌گونه کار می‌کند:</p><div class="card"><pre dir="ltr">Source text
+    |
+    v
+parse_source
+    |
+    v
+CompilationUnit
+    |
+    v
+compile_x64_coff_program
+    |
+    v
+AMD64 COFF objects + link plan
+    |
+    v
+Windows linker
+    |
+    v
+PE32+ executable</pre></div>
+<p class="note">این فقط بخشی از مسیر بزرگ‌تر پروژه است؛ زبان کامل، Runtime، کتابخانهٔ استاندارد، IDE و Form Designer هنوز آماده نیستند.</p>
+<div class="kicker" style="margin-top:30px">۰۶ · پیشرفت پروژه</div><h2>الان کجا هستیم؟</h2><p class="section-intro">آخرین checkpoint عمومی کامپایلر: <strong>N113-G62R16 · ۲۳ نوامبر ۲۰۲۶</strong>.</p>
+<div class="grid">
+<article class="card"><h3>سلامت سورس</h3><p>هر ۱۴ فایل snapshot G62R16 با فایل‌های متناظر در Workspace تطبیق دارند.</p></article>
+<article class="card"><h3>آزمایش محدود</h3><p>G62R13 با MSVC و G2-on موفق بوده است: ۵۶ action، ۶۶ machine move و ۴۷۴ بایت انتقال.</p></article>
+<article class="card"><h3>کارهای باقی‌مانده</h3><p>درج عمومی edge آماده نیست (G11 برابر ۰ از ۷). Full Regression هم اجرا نشده است.</p></article>
+</div>
+<p>گام بعدی G62R17 است: بررسی liveness موقت‌های expression و مالکیت register پیش از طراحی routing اختیاری. این کار هنوز شروع نشده است.</p>
+<table><thead><tr><th>پلتفرم</th><th>وضعیت فعلی</th></tr></thead><tbody>
+<tr><td>Windows x64</td><td>مسیر یکپارچه ماژول‌های AMD64 COFF و link plan می‌سازد؛ linker ویندوز PE32+ تولید می‌کند.</td></tr>
+<tr><td>Linux x64</td><td>بعضی اجزای ELF64 و آزمون‌های محدود LLD وجود دارند، اما مسیر کامل سورس تا ELF ثابت نشده است.</td></tr>
+<tr><td>x86-32</td><td>در برنامهٔ آینده است؛ در backend فعلی پیاده‌سازی نشده.</td></tr>
+<tr><td>macOS</td><td>هدف آینده است؛ خروجی Mach-O و آزمون روی macOS آماده نیست.</td></tr>
+</tbody></table>
+<div class="kicker" style="margin-top:30px">۰۷ · مشارکت</div><h2>شما از X چه انتظاری دارید؟</h2><p class="section-intro">بگویید با X دوست دارید چه برنامه‌ای بسازید، کدام قابلیت‌ها برایتان مهم‌ترند و در زبان‌هایی که استفاده می‌کنید چه چیزهایی را بهتر می‌کردید.</p><div class="actions"><a class="button" href="https://github.com/hadighmoradi/Project-X/discussions">ورود به گفت‌وگو</a><a class="button secondary" href="docs/DEVELOPMENT_WORKFLOW_FA.md">روش توسعه و ثبت نتیجه‌ها</a><a class="button secondary" href="index.html#fa">صفحهٔ اصلی</a></div>
+</section>
+</main>
+<footer class="wrap"><span>Project X · Simple code, native programs, open ideas</span><a href="index.html">Back to the project home</a></footer>
+</body>
+</html>
