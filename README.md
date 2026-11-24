@@ -43,19 +43,23 @@ I started this project because I want fast programs and small native executables
 
 I call the project **X** for now; its final name is still open. The repository is public and GitHub Discussions are open. You can suggest a name in [Ideas](https://github.com/hadighmoradi/Project-X/discussions/categories/ideas), one idea per discussion, and briefly explain why it fits. After the community has discussed the suggestions, I will shortlist candidates and open a poll in [Polls](https://github.com/hadighmoradi/Project-X/discussions/categories/polls). The name with the most votes when the poll closes will replace X. See [Project vision and naming](docs/PROJECT_VISION_AND_NAMING.md).
 
-## Current checkpoint
+## Current validation checkpoint
 
-**N113-G62R16 · 23 November 2026**
+**G62R18 · 24 November 2026**  
+**Source/workspace baseline: N113-G62R16**
 
-| Area | Status |
+| Area | Result |
 |---|---|
-| Source integrity | All 14 files in the G62R16 source snapshot match the live workspace. |
-| Bounded probe | G62R13 passed an isolated MSVC G2-on workload: 56 actions, 66 machine moves, 474 transfer bytes. |
-| General edge insertion | Not ready; G11 is 0/7 and insertion was not performed. |
-| Full regression | Not run for this checkpoint. |
-| Next recorded step | G62R17: examine expression-temporary liveness and register ownership before designing opt-in routing. |
+| Focused suites | N111 23/23, N112 25/25, N113 204/204 — 252/252 passed, 0 failed, 0 skipped. |
+| Build host | Windows x64 · MSVC 19.51.36248 · CMake 4.4.4 · NMake · Debug /Z7. Configure and build exited 0. |
+| Source integrity | 16 named files matched expected SHA-256 values before and after the run. |
+| N113 operation-level spill/reload | Validation scope closed by G62R18 evidence. |
+| CFG edge insertion | Not ready; G11 remains 0/7 and Edge Bundle insertion was not performed. Broader work moves to N114. |
+| Full regression | Not run. |
 
-These results apply only to the checks named above. The CMake inventory count is not a count of tests run.
+G62R18 is a scoped validation of the local XForm_test workspace, not a full-project regression and not proof that every file in a particular public Git commit is byte-identical to that workspace. The CMake inventory figure of 175,937 is not the number of tests executed. See the [detailed validation record](docs/G62R18_VALIDATION.md) and [current engineering status](docs/STATUS.md).
+
+The earlier N113-G62R16 source-snapshot and G62R13 bounded-probe records remain historical evidence; they have not been overwritten.
 
 ## Architecture
 
