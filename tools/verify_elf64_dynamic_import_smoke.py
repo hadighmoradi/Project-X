@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-FileCopyrightText: 2026 Hector Moradi
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Load an N27 shared object and verify a real libc getpid import via GOT."""
 
 from __future__ import annotations

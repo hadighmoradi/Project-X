@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Hector Moradi
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 #include "xfrontend/native_object_emitter.hpp"
 #include "xfrontend/linker.hpp"
 #include "xfrontend/binary_object.hpp"

@@ -1,3 +1,6 @@
+<!-- SPDX-FileCopyrightText: 2026 Hector Moradi -->
+<!-- SPDX-License-Identifier: CC-BY-SA-4.0 -->
+
 # تاریخچهٔ توسعه
 
 این سند خلاصهٔ عمومی milestoneهایی است که در آرشیو پروژه ثبت شده‌اند. جای manifestهای هر patch و گزارش‌های اعتبارسنجی میزبان را نمی‌گیرد.

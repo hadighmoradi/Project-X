@@ -1,3 +1,6 @@
+<!-- SPDX-FileCopyrightText: 2026 Hector Moradi -->
+<!-- SPDX-License-Identifier: CC-BY-SA-4.0 -->
+
 # ورودی کاری کنترل‌شدهٔ N113
 
 فایل `N113_Controlled_Workload.src` نخستین برنامهٔ Source اجراییِ تعریف‌شده در Workspace برای پیشبرد N113 است.

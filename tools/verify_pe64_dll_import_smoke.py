@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-FileCopyrightText: 2026 Hector Moradi
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Structural verifier for the N36 PE32+ DLL import/IAT smoke image."""
 from __future__ import annotations
 

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Hector Moradi
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 #include "xfrontend/control_flow.hpp"
 #include "xfrontend/drop_contract.hpp"
 #include "xfrontend/ownership_lowering.hpp"

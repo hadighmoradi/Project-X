@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Hector Moradi
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 #include "xfrontend/pe64_advanced.hpp"
 #include "xfrontend/binary_object.hpp"
 #include "xfrontend/archive.hpp"
