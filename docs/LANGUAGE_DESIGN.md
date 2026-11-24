@@ -1,145 +1,130 @@
 <!-- SPDX-FileCopyrightText: 2026 Hector Moradi -->
 <!-- SPDX-License-Identifier: CC-BY-SA-4.0 -->
 
-# Project X language design overview
+# The ideas behind Project X
 
-> A readable language, compiled to native programs, with a strong focus on predictable behavior and compact output.
+I want X to feel comfortable to write, produce native programs, and stay useful for both everyday apps and lower-level work. The aim is simple: make programming easier without giving up control over the final program.
 
-This is a public, beginner-friendly summary of the direction documented in the project's architecture and syntax notes. It is not a complete language specification, and it does not claim that every designed feature is already implemented.
+X is still being built. This page explains the direction and the ideas that have influenced the design. It does not mean every feature shown here is already available in the compiler.
 
-## What are we trying to build?
+## What matters most
 
-The long-term goal brings together three priorities:
+**Easy to read.** Common code should be clear. The language should not make simple tasks feel complicated.
 
-1. **Approachable code:** everyday programs should be easy to read and write.
-2. **Native execution:** compiled programs should run directly on the target operating system, with performance that can be compared honestly against C/C++ on equivalent workloads.
-3. **Compact output:** executables should not carry an interpreter or unused library code just to use a small feature.
+**Fast native programs.** Programs should compile to native output. We will compare performance with equivalent C and C++ programs instead of making claims without measurements.
 
-These are engineering goals. Actual speed, executable size, startup time, compatibility, and reliability must be measured on named builds and workloads before results are claimed.
+**Small executables.** A small program should not need to carry a large runtime or libraries it never uses.
 
-## Where the design ideas come from
+**Control when it is needed.** The language should support systems work, resource management, and Windows applications as the project grows.
 
-The project's design notes compare several established languages and tools. We take ideas as references, not their complete syntax, implementation, code, or license.
+## What we are learning from other languages
 
-| Language or tool | What we learn from it | How that idea should appear in X |
+I have looked at languages and tools that do different things well. These are ideas to learn from, not languages that X is trying to copy.
+
+| Language or tool | What I like about it | What I want to bring to X |
 |---|---|---|
-| **Visual Basic** | Friendly, approachable syntax | Keep common code readable and avoid ceremony where it adds no value |
-| **Python** | Clear high-level APIs and concise everyday operations | Make common library tasks straightforward without requiring a dynamic interpreter |
-| **C / C++** | Native systems access, explicit control, streams, and a strong performance reference | Preserve low-level capability and measure native performance against equivalent C/C++ programs |
-| **Rust** | Attention to types, explicit errors, ownership, and resource lifetime | Make resource behavior predictable and APIs clear about ownership and failure |
-| **Windows Batch / CMD** | Direct operations for files, folders, environment variables, arguments, and processes | Offer simple named operations while avoiding fragile CMD parsing, implicit shell execution, and untyped text conventions |
-| **PureBasic** | A simple, direct GUI programming experience | Aim for approachable GUI APIs and a visual form-design workflow |
-| **Delphi / Lazarus** | Integrated development tools and visual form designers | Use the IDE and designer workflow as a product-design reference |
+| **Visual Basic** | Friendly, easy-to-read syntax | Make everyday code feel simple and familiar |
+| **C** | Direct access to the system and native performance | Keep low-level control available and use C as a performance reference |
+| **Delphi / Lazarus** | A complete development environment and visual form designer | Make it easy to build Windows apps with an IDE and a visual designer |
+| **Python** | Straightforward code and helpful high-level libraries | Make common tasks easy without requiring a Python-style interpreter |
+| **Rust** | Careful handling of types, errors, and resource ownership | Make resource lifetime and errors clear and predictable |
+| **Windows Batch / CMD** | Short commands for files, folders, and running programs | Give common system tasks simple names and easy-to-use APIs |
+| **PureBasic** | A direct way to create GUI applications | Keep GUI code approachable |
 
-The latest compact architecture brief identifies Visual Basic, C, and Delphi/Lazarus as its headline inspirations. Older syntax comparison notes add Python, Rust, Windows Batch/CMD, and PureBasic for specific API and GUI comparisons. These references may evolve as the design is reviewed.
+C and C++ are also useful points of comparison for native performance and low-level control. The goal is not to imitate their syntax in every detail.
 
-## A simple example of the intended syntax
+## A quick look at the code
 
-The compact syntax reference uses `.src` source files, UTF-8 text, braces for blocks, semicolons at the end of statements, and the `function` keyword.
+Source files use the .src extension and UTF-8 text. Blocks use braces, statements end with a semicolon, and functions start with the function keyword.
 
-```x
-function Add(left, right) {
-    return left + right;
-}
+    function Add(left, right) {
+        return left + right;
+    }
 
-function PrintWelcome() {
-    PrintLine "Welcome to X.";
-}
-```
+    function Welcome() {
+        PrintLine "Welcome to X.";
+    }
 
-A conditional follows the same block style:
+A condition uses the same block style:
 
-```x
-if (ready) {
-    PrintLine "Ready";
-} else {
-    PrintLine "Please wait";
-}
-```
+    if (ready) {
+        PrintLine "Ready";
+    } else {
+        PrintLine "Please wait";
+    }
 
-These examples explain the intended source style; they do not claim that the public compiler snapshot accepts every construct in the full design notes.
+For Windows forms, the design uses two related files. The .frm file describes the form; the matching .src file contains the program code and event handlers.
 
-## Why we expect small native executables
+    Form MainForm {
+        Caption = "Customer List";
+        ClientWidth = 700;
+        ClientHeight = 450;
 
-**Small output is not a feature borrowed from one particular language.** It is an implementation goal supported by several engineering choices:
+        Button SaveButton {
+            Caption = "Save";
+            OnClick = HandleSave;
+        }
+    }
 
-- Native compilation rather than requiring an interpreter to be installed for every program.
-- Static linking as the documented default.
-- A modular runtime and libraries, so only required pieces are selected for a build.
-- Avoiding a mandatory runtime parser for design-time files such as `.frm`.
-- Measuring executable size, startup time, and runtime overhead on repeatable test programs.
+This is the planned form format. The visual designer and its connection to the finished compiler are still being developed.
 
-Static linking by itself does not guarantee a small executable. The actual result depends on the compiler, linker, selected libraries, runtime support, optimization, and the program being built.
+## Where speed and small output come from
 
-## Native architecture: design goal versus current code
+We are not taking small file size from one particular language. It comes down to how the compiler and libraries are built.
 
-The long-term language pipeline is intended to turn source and design-time metadata into native program output. The current public repository demonstrates a narrower compiler path:
+The current design aims for native compilation, static linking by default, and a modular runtime. A program should include only the library parts it needs. Design files such as .frm should be handled during design or build time, not parsed by every finished program.
 
-```text
-Current public compiler path
+Static linking does not automatically make a program small. The compiler, linker, libraries, and actual program all affect the result. We will need repeatable tests to measure executable size, startup time, and execution speed.
 
-Source text
-   |
-   v
-parse_source
-   |
-   v
-CompilationUnit
-   |
-   v
-compile_x64_coff_program
-   |
-   v
-AMD64 COFF object modules + deterministic link plan
-   |
-   v
-Platform linker
-   |
-   v
-Windows x64 PE32+ executable
-```
+## What the public compiler can do today
 
-The active backend in the public repository is custom x64 code; it is not LLVM. The compiler snapshot is experimental and does not yet represent the complete language, runtime, standard library, IDE, or GUI product.
+The current public code is an experimental C++17 frontend with a custom x64 backend. Its integrated Windows x64 path looks like this:
 
-## GUI and visual form design
+    Source text
+        |
+        v
+    parse_source
+        |
+        v
+    CompilationUnit
+        |
+        v
+    compile_x64_coff_program
+        |
+        v
+    AMD64 COFF objects + link plan
+        |
+        v
+    Windows linker
+        |
+        v
+    PE32+ executable
 
-The language design describes two related files:
+This is a real but limited part of the larger plan. It is not yet the complete X language, runtime, standard library, IDE, or form designer.
 
-- `.src`: the program's source code and event handlers.
-- `.frm`: a declarative description of a form and its visual components.
+## Current status and next steps
 
-A `.frm` file is intended as design-time input, not a general-purpose script that must be interpreted by every finished executable. The visual designer, component lifecycle, runtime integration, and production parser remain work to complete and validate.
+The latest public compiler checkpoint is **N113-G62R16 (23 November 2026)**.
 
-## What works today?
-
-**Public checkpoint: N113-G62R16 · 23 November 2026**
-
-- The 14-file G62R16 source snapshot matches the corresponding live workspace files.
-- A bounded G62R13 MSVC G2-on probe passed on its controlled workload: 56 actions, 66 machine moves, and 474 transfer bytes.
+- The 14-file source snapshot matches the corresponding workspace files.
+- A limited G62R13 test with MSVC and G2-on passed on its controlled workload: 56 actions, 66 machine moves, and 474 transfer bytes.
 - General edge insertion is not ready: G11 is 0/7, and insertion was not performed.
 - Full regression was not run for this checkpoint.
-- The next recorded compiler task is G62R17: analyze expression-temporary liveness and register ownership before designing opt-in routing. It has not yet been performed.
+- The next step is G62R17: check expression-temporary liveness and register ownership before designing optional routing. This work has not started.
 
-Platform evidence is also limited:
+The platform plan is broader than today's implementation:
 
-| Target | Publicly documented state |
+| Platform | Current state |
 |---|---|
-| Windows x64 | Current integrated path emits AMD64 COFF modules and a link plan; the platform linker produces PE32+ |
-| Linux x64 | ELF64 components and scoped Linux-host LLD evidence exist; an end-to-end source-to-ELF compiler path is not established |
-| x86-32 | Roadmap target; not implemented in the current backend |
-| macOS | Future target; Mach-O output and macOS validation are not established |
+| Windows x64 | The integrated compiler path creates AMD64 COFF objects and a link plan; the Windows linker produces PE32+ |
+| Linux x64 | Some ELF64 parts and limited LLD tests exist, but a complete source-to-ELF path is not established |
+| x86-32 | Planned; not implemented in the current backend |
+| macOS | A future goal; Mach-O output and macOS validation are not in place |
 
-## How the design will be updated
+## Help shape the language
 
-When a design decision is approved, the relevant language and architecture documents will be updated. When an engineering phase is completed and verified, its exact revision, environment, commands, tests, results, limitations, and next step will be recorded in the repository. A design proposal, a prototype, and a feature proven in the compiler must always be labelled separately.
+What would you like to build with X? Which features matter most to you? What do you like or dislike about the languages you already use?
 
-See the [development workflow](DEVELOPMENT_WORKFLOW.md), [current status](STATUS.md), [architecture](ARCHITECTURE.md), and [development history](DEVELOPMENT_HISTORY.md).
+Join the [GitHub discussions](https://github.com/hadighmoradi/Project-X/discussions) and tell us what you think.
 
-## Join the discussion
-
-What would you expect from a language you might actually use? Tell us what you want to build, which features matter most, and what you would improve in existing languages.
-
-[Join the GitHub Discussions](https://github.com/hadighmoradi/Project-X/discussions)
-
----
-*Public summary based on the Project X architecture brief and compact syntax reference dated 14 November 2026, alongside the current public repository checkpoint. Detailed proposals remain subject to review and change.*
+For the latest engineering notes, see [current status](STATUS.md), [architecture](ARCHITECTURE.md), and [development history](DEVELOPMENT_HISTORY.md).

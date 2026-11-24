@@ -1,34 +1,47 @@
 <!-- SPDX-FileCopyrightText: 2026 Hector Moradi -->
 <!-- SPDX-License-Identifier: CC-BY-SA-4.0 -->
 
-# Project vision and naming
+# Project vision and name
 
-## Why build a new language?
+I started Project X because I want a language that is easy to write, runs as a native program, and can produce small executables.
 
-For a long time, I have wanted one language that brings together three things: programs that run quickly, small native executables, and code that is easy to write. I would like to combine the speed and compact output people expect from low-level languages with the readability of a high-level language.
+The goal is to bring together the friendly feel of a high-level language and the control of a native one. We want to make everyday code clear without taking away the tools needed for systems work.
 
-That is my goal for the language, not a claim about the current compiler. The compiler is still experimental, and its speed, output size, and ease of use will need to be measured as the work continues.
+These are the goals for the project. The compiler is still experimental, so speed, executable size, and ease of use must be tested as the language grows.
 
-## The final name is still open
+## Where the design ideas come from
 
-For now, I call the project **X**. It is a placeholder. I would like people who follow the project to suggest names, talk through the ideas, and then vote. The name with the most votes at the end will replace X.
+The language design takes inspiration from several places:
 
-The repository is public and Discussions are enabled. Post one name idea per discussion in [Ideas](https://github.com/hadighmoradi/Project-X/discussions/categories/ideas) and briefly explain why you chose it. After discussing and shortlisting candidates, I will open a poll in [Polls](https://github.com/hadighmoradi/Project-X/discussions/categories/polls). The name with the most votes when the poll closes will replace X.
+- Visual Basic for readable, approachable syntax.
+- C for native control and as a performance reference.
+- Delphi and Lazarus for their IDEs and visual form designers.
+- Python for clear, high-level ways to do common tasks.
+- Rust for careful handling of types, errors, and resources.
+- Windows Batch for simple file and system operations.
+- PureBasic for an approachable way to build GUI programs.
 
-### Proposed process
+We want to learn from what works well in each of them and make the result feel like one language.
 
-1. Open one discussion for each name idea and briefly explain why you chose it.
-2. Compare similar ideas and talk through the strongest options.
-3. Put the shortlist in a GitHub poll.
-4. When voting closes, use the top-voted name throughout the project.
+See the [language design page](../language-design.html) for examples and the current compiler status.
 
-## Platforms: the goal and the current state
+## Help choose the name
 
-My goal is to support **x86-32 (X32)** and **x86-64 (X64)** on Windows and Linux, with macOS as a later target. The current code is only part of that plan: the integrated path is Windows x64/COFF; Linux has ELF64 components and a few limited checks, but no proven source-to-ELF path; x86-32 is not implemented; and Mach-O output for macOS is not ready.
+X is only a working name. I would like the final name to come from the people who use and follow the project.
 
-Here, X32 means 32-bit x86 and X64 means x86-64. AMD64 is the technical name used for the Windows x64 COFF path; it does not mean the project is limited to AMD processors.
+Have a name in mind? Start a discussion in [Ideas](https://github.com/hadighmoradi/Project-X/discussions/categories/ideas), one name per post, and tell us why you like it. We will talk through the suggestions and then put a shortlist in a poll under [Polls](https://github.com/hadighmoradi/Project-X/discussions/categories/polls).
 
+The name with the most votes when the poll closes will become the new project name.
 
-## Language design overview
+## Platforms
 
-The public [language design overview](../language-design.html) explains the inspirations behind the design, the intended syntax, the compact-output strategy, and the boundary between current compiler evidence and future goals. It is a summary, not a substitute for the detailed design specifications.
+The long-term goal is to support x86-32 and x86-64 on Windows and Linux, with macOS considered for a later stage.
+
+Today's public compiler is more limited:
+
+| Platform | Current state |
+|---|---|
+| Windows x64 | The integrated path creates AMD64 COFF objects and a link plan; the Windows linker produces PE32+ |
+| Linux x64 | ELF64 parts and limited LLD tests exist, but a complete source-to-ELF path is not established |
+| x86-32 | Planned, but not implemented in the current backend |
+| macOS | A future goal; Mach-O output and macOS validation are not ready |
