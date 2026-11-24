@@ -19,10 +19,13 @@ This is a public summary of the milestones recorded in the project archives. It 
 | N102–N107 / v1.48.0 | CFG-aware allocation and unwind hardening. |
 | N113-G1–G33 | FunctionEmitter edge/operand evidence, diagnostics, and readiness gates. The recorded gates keep general edge insertion disabled. |
 | N113-G57–G62R16 | Readiness and bounded probe analysis, source cross-checks, and a 14-file source snapshot. |
+| N113-G62R18 | Scoped MSVC validation of N111/N112/N113: 252/252 passed; operation-level spill/reload scope closed; CFG Edge Bundle work deferred to N114. |
 
 ## Current continuation point
 
-The latest checkpoint is N113-G62R16 (23 November 2026). G62R17 is a proposed analysis step: compare expression-temporary liveness and register ownership with N112 Flow locations before designing opt-in routing. It has not been performed.
+The latest validation record is G62R18 (24 November 2026), run against the local N113-G62R16 workspace baseline. The N111, N112, and N113 focused suites passed 252/252 tests under MSVC 19.51.36248 and CMake 4.4.4. This closes the N113 operation-level spill/reload validation scope.
+
+The next engineering scope is N114: CFG Edge Bundle and broader CFG-edge integration. G11 remains 0/7 and edge-bundle insertion was not performed in G62R18. Full regression and end-to-end execution of a generated PE remain unverified. See [G62R18 validation record](G62R18_VALIDATION.md) for exact scope and evidence.
 
 ## Historical record gaps
 
