@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Hector Moradi
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 #include "xfrontend/source_manager.hpp"
 #include "xfrontend/lexer.hpp"
 #include "xfrontend/parser.hpp"

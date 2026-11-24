@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Hector Moradi
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 #include "xfrontend/elf64_shared_object.hpp"
 
 #include <algorithm>

@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-FileCopyrightText: 2026 Hector Moradi
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Validate and lazily call an imported libc function through an ELF64 PLT."""
 
 from __future__ import annotations

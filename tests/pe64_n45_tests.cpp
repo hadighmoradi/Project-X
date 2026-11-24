@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Hector Moradi
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 #include "xfrontend/pe64_pdb.hpp"
 #include "xfrontend/pe64_dll.hpp"
 #include "xfrontend/pe64_debug_signing.hpp"

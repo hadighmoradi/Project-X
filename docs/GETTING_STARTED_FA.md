@@ -1,3 +1,6 @@
+<!-- SPDX-FileCopyrightText: 2026 Hector Moradi -->
+<!-- SPDX-License-Identifier: CC-BY-SA-4.0 -->
+
 # راهنمای شروع و ساخت
 
 ## پیش‌نیازها

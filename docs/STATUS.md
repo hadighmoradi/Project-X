@@ -1,3 +1,6 @@
+<!-- SPDX-FileCopyrightText: 2026 Hector Moradi -->
+<!-- SPDX-License-Identifier: CC-BY-SA-4.0 -->
+
 # Current engineering status
 
 **Checkpoint:** N113-G62R16  

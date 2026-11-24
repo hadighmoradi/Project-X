@@ -1,3 +1,6 @@
+<!-- SPDX-FileCopyrightText: 2026 Hector Moradi -->
+<!-- SPDX-License-Identifier: CC-BY-SA-4.0 -->
+
 # چشم‌انداز پروژه و انتخاب نام
 
 ## چرا دارم یک زبان تازه می‌سازم؟

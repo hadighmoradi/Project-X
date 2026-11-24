@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-FileCopyrightText: 2026 Hector Moradi
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Dependency-free structural verifier for the N30 PE32+ multi-import/unwind smoke image."""
 from __future__ import annotations
 import argparse

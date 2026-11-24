@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Hector Moradi
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 module N113G18Emitter;
 private function Helper(int p, int q) returns int { return p + q; }
 private function FloatHelper(double x, double y) returns double { return x + y; }

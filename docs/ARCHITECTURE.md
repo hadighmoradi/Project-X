@@ -1,3 +1,6 @@
+<!-- SPDX-FileCopyrightText: 2026 Hector Moradi -->
+<!-- SPDX-License-Identifier: CC-BY-SA-4.0 -->
+
 # Project X architecture
 
 The current workspace implements an experimental native frontend and a project-specific x64 (x86-64) backend.

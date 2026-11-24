@@ -1,3 +1,6 @@
+<!-- SPDX-FileCopyrightText: 2026 Hector Moradi -->
+<!-- SPDX-License-Identifier: CC-BY-SA-4.0 -->
+
 <div align="center">
 
 # Project X
@@ -93,10 +96,13 @@ The public-facing milestone summary is in [Development history](docs/DEVELOPMENT
 
 ## Licensing
 
-The documented policy assigns GPL-3.0-or-later to compiler and core tools, LGPL-3.0-or-later with the X Runtime Linking Exception to a runtime component, and CC BY-SA 4.0 to project documentation. This snapshot does not include a runtime implementation. See the licensing page for the license-text and notice items that must accompany a release.
+- Compiler, backend, tests, development tools, build scripts, and project-owned source fixtures: **GPL-3.0-or-later**.
+- Project documentation and website content: **CC BY-SA 4.0**.
+- Standalone examples are GPL-3.0-or-later unless an individual file explicitly declares another license, such as MIT.
+- The runtime is not included in this snapshot. Its planned LGPL-3.0-or-later policy and X Runtime Linking Exception are not final or in effect yet.
 
-The source license text is in [LICENSE](LICENSE), and the documentation license text is in [LICENSES/CC-BY-SA-4.0.txt](LICENSES/CC-BY-SA-4.0.txt). Component scope is recorded in [COPYRIGHT.md](COPYRIGHT.md).
+The compiler's GPL license does not automatically make every independently written program compiled with it GPL-licensed. See [the full licensing policy](docs/LICENSE_POLICY.md), [copyright scope](COPYRIGHT.md), and [contributor guide](CONTRIBUTING.md).
 
 ## Contributing
 
-Please include the exact source revision, host toolchain, command, and test scope in reports. Distinguish design goals from features implemented and verified in this snapshot.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution requirements, file notices, third-party material, and the licenses that apply to code and documentation. When reporting engineering results, include the exact source revision, host toolchain, command, and test scope.

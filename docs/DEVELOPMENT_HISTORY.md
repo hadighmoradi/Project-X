@@ -1,3 +1,6 @@
+<!-- SPDX-FileCopyrightText: 2026 Hector Moradi -->
+<!-- SPDX-License-Identifier: CC-BY-SA-4.0 -->
+
 # Development history
 
 This is a public summary of the milestones recorded in the project archives. It is not a substitute for the per-patch manifests and host-validation logs.

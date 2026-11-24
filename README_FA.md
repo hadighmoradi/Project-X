@@ -1,3 +1,6 @@
+<!-- SPDX-FileCopyrightText: 2026 Hector Moradi -->
+<!-- SPDX-License-Identifier: CC-BY-SA-4.0 -->
+
 <div dir="rtl" align="center">
 
 # زبان برنامه‌نویسی X
@@ -86,17 +89,20 @@ backend جاری پیاده‌سازی اختصاصی x64 (x86-64) است و LLV
 
 - [وضعیت مهندسی جاری](docs/STATUS.md)
 - [معماری](docs/ARCHITECTURE.md)
-- [سیاست مجوز و موارد لازم پیش از انتشار](docs/LICENSE_POLICY.md)
+- [سیاست مجوز و موارد لازم پیش از انتشار](docs/LICENSE_POLICY_FA.md)
 - [صفحهٔ زندهٔ پروژه](https://hadighmoradi.github.io/Project-X/)
 - [چشم‌انداز و انتخاب نام زبان](docs/PROJECT_VISION_AND_NAMING_FA.md)
 - [راهنمای خوانای پروژه](https://hadighmoradi.github.io/Project-X/project-guide.html)
 
 ## مجوز
 
-سیاست ثبت‌شده برای compiler و ابزارهای اصلی GPL-3.0-or-later، برای runtime همراه با X Runtime Linking Exception از LGPL-3.0-or-later، و برای مستندات پروژه CC BY-SA 4.0 است. این snapshot پیاده‌سازی runtime را شامل نمی‌شود. متن مجوزها و اعلان‌های لازم برای انتشار در صفحهٔ سیاست مجوز مشخص شده‌اند.
+- کامپایلر، backend، آزمون‌ها، ابزارهای توسعه، اسکریپت‌های ساخت و fixtureهای سورس متعلق به پروژه: **GPL-3.0-or-later**.
+- مستندات و محتوای وب‌سایت: **CC BY-SA 4.0**.
+- مثال‌های مستقل به‌طور پیش‌فرض GPL-3.0-or-later هستند؛ فقط فایلی که صریحاً مجوز دیگری مانند MIT را اعلام کند، از آن مجوز استفاده می‌کند.
+- Runtime در این snapshot وجود ندارد. مجوز برنامه‌ریزی‌شدهٔ LGPL-3.0-or-later و استثنای اتصال X هنوز نهایی و اجرایی نشده‌اند.
 
-متن مجوز سورس در [LICENSE](LICENSE) و متن مجوز مستندات در [LICENSES/CC-BY-SA-4.0.txt](LICENSES/CC-BY-SA-4.0.txt) قرار دارد. محدودهٔ componentها در [COPYRIGHT.md](COPYRIGHT.md) ثبت شده است.
+GPL بودن کامپایلر به‌تنهایی باعث نمی‌شود هر برنامهٔ مستقلی که با آن کامپایل می‌شود، خودکار GPL شود. جزئیات را در [سیاست مجوزها](docs/LICENSE_POLICY_FA.md)، [محدودهٔ کپی‌رایت](COPYRIGHT.md) و [راهنمای مشارکت](CONTRIBUTING.md) ببینید.
 
 ## مشارکت و گزارش اشکال
 
-در گزارش‌ها revision دقیق سورس، ابزار زنجیرهٔ میزبان، فرمان اجرا و محدودهٔ آزمون را درج کنید. هدف طراحی را با قابلیتی که در این snapshot پیاده‌سازی و تأیید شده یکی نگیرید.
+برای آشنایی با شرایط مشارکت، اعلان مجوز فایل‌ها و استفاده از محتوای شخص ثالث، [راهنمای مشارکت](CONTRIBUTING.md) را بخوانید. هنگام گزارش نتیجهٔ مهندسی، revision دقیق سورس، ابزار زنجیرهٔ میزبان، فرمان اجرا و محدودهٔ آزمون را درج کنید.

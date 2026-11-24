@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Hector Moradi
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 module N113ControlledWorkload;
 
 // Project-owned controlled workload for N113 integration analysis.
