@@ -34,8 +34,6 @@ See [G62R18 validation record](G62R18_VALIDATION.md) and [Persian status](STATUS
 
 ## Target platform roadmap
 
-## Target platform roadmap
-
 The owner-stated direction is x86-32 (X32) and x86-64 (X64) for Windows and Linux, with macOS planned later. Current code evidence supports a narrower statement:
 
 | Target | Current status |
