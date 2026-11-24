@@ -104,13 +104,18 @@ This is a real but limited part of the larger plan. It is not yet the complete X
 
 ## Current status and next steps
 
-The latest public compiler checkpoint is **N113-G62R16 (23 November 2026)**.
+The latest recorded validation is **G62R18 (24 November 2026)**, run against the local **N113-G62R16** workspace baseline.
 
-- The 14-file source snapshot matches the corresponding workspace files.
-- A limited G62R13 test with MSVC and G2-on passed on its controlled workload: 56 actions, 66 machine moves, and 474 transfer bytes.
-- General edge insertion is not ready: G11 is 0/7, and insertion was not performed.
-- Full regression was not run for this checkpoint.
-- The next step is G62R17: check expression-temporary liveness and register ownership before designing optional routing. This work has not started.
+- The N111, N112, and N113 focused MSVC suites passed **252/252 tests**: 23/23, 25/25, and 204/204, with zero failures and zero skipped cases.
+- Build environment: Windows x64, MSVC 19.51.36248, CMake 4.4.4, NMake Makefiles, Debug with /Z7. Configure and build both exited 0.
+- Sixteen named source/build/test files matched their expected SHA-256 values before and after the run.
+- This closes the N113 operation-level spill/reload validation scope.
+- General CFG edge insertion is still not ready: G11 is 0/7 and Edge Bundle insertion was not performed. Broader CFG Edge Bundle integration moves to N114.
+- Full regression and end-to-end execution of a generated PE were not part of this validation.
+
+The reported project inventory total (175,937) is not the number of tests run. G62R18 executed only the 252 cases in the three named suites. The result applies to the local workspace and its 16-file hash manifest; it is not a claim that the entire public repository at a particular Git commit was independently matched to that workspace.
+
+See the [G62R18 validation record](G62R18_VALIDATION.md) for the test totals, exact environment, SHA-256 manifest, evidence-package digest, and limitations.
 
 The platform plan is broader than today's implementation:
 

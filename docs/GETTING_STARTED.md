@@ -36,4 +36,8 @@ cmake --build build --config Release
 
 ## Scope of the recorded evidence
 
-The current documented checkpoint is N113-G62R16. It records a bounded G62R13 MSVC probe, a 14-file source-hash match, and a full regression that was not run for that checkpoint. See [Current status](STATUS.md) before interpreting test results.
+The latest recorded focused validation is G62R18 (24 November 2026), against the local N113-G62R16 workspace baseline. The N111, N112, and N113 CMake suite targets were built with MSVC 19.51.36248 and CMake 4.4.4; all 252 selected tests passed (23 + 25 + 204), with zero failures and zero skipped cases.
+
+This is not a full regression run. The recorded project inventory total of 175,937 is inventory metadata, not the executed test count. G11 remains 0/7, Edge Bundle insertion was not performed, and broader CFG Edge Bundle integration is assigned to N114.
+
+The evidence applies to the named local workspace and 16-file before/after SHA-256 check; it does not by itself assert that the entire public repository tree at a Git commit is byte-identical to that workspace. See [G62R18 validation record](G62R18_VALIDATION.md) and [Current status](STATUS.md).

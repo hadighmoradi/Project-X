@@ -43,19 +43,23 @@
 
 فعلاً اسم پروژه را **X** گذاشته‌ام؛ نام نهایی هنوز انتخاب نشده است. مخزن عمومی است و بخش Discussions باز است. اگر نامی به ذهن‌تان می‌رسد، آن را در دستهٔ [Ideas](https://github.com/hadighmoradi/Project-X/discussions/categories/ideas) ثبت کنید و کوتاه بنویسید چرا برای پروژه مناسب است. پس از گفت‌وگو دربارهٔ پیشنهادها، چند نام را برای رأی‌گیری انتخاب می‌کنم و نظرسنجی را در دستهٔ [Polls](https://github.com/hadighmoradi/Project-X/discussions/categories/polls) می‌گذارم. نامی که تا پایان رأی‌گیری بیشترین رأی را بگیرد، جای X را می‌گیرد. [چشم‌انداز و روند انتخاب نام](docs/PROJECT_VISION_AND_NAMING_FA.md)
 
-## checkpoint جاری
+## جدیدترین checkpoint اعتبارسنجی
 
-**N113-G62R16 · ۲۳ نوامبر ۲۰۲۶**
+**G62R18 · ۲۴ نوامبر ۲۰۲۶**  
+**مبنای سورس و Workspace: N113-G62R16**
 
-| بخش | وضعیت |
+| بخش | نتیجه |
 |---|---|
-| سلامت سورس | هر ۱۴ فایل snapshot مرحلهٔ G62R16 با workspace زنده تطبیق دارند. |
-| probe محدود | G62R13 با MSVC و G2-on روی workload کنترل‌شده PASS شد: ۵۶ action، ۶۶ machine move و ۴۷۴ بایت انتقال. |
-| درج عمومی edge | آماده نیست؛ G11 برابر ۰ از ۷ است و insertion انجام نشده. |
-| Full Regression | برای این checkpoint اجرا نشده است. |
-| گام بعد | G62R17: بررسی liveness موقت‌های expression و مالکیت register پیش از طراحی routing اختیاری. |
+| مجموعه‌های متمرکز | N111: ۲۳ از ۲۳، N112: ۲۵ از ۲۵، N113: ۲۰۴ از ۲۰۴؛ مجموع ۲۵۲ موفق، صفر ناموفق و صفر ردشده. |
+| محیط Build | Windows x64 · MSVC 19.51.36248 · CMake 4.4.4 · NMake · Debug /Z7؛ Configure و Build با کد خروجی صفر. |
+| یکپارچگی سورس | Hash شانزده فایل مشخص پیش و پس از اجرا با مقادیر مورد انتظار تطبیق داشت. |
+| Spill/Reload در سطح Operation-level از N113 | محدودهٔ اعتبارسنجی با شواهد G62R18 بسته می‌شود. |
+| درج CFG edge | آماده نیست؛ G11 همچنان ۰ از ۷ است و Edge Bundle insertion انجام نشده. ادامهٔ کار به N114 منتقل شده است. |
+| Full Regression | اجرا نشده است. |
 
-این نتایج فقط به همان بررسی‌های مشخص محدودند. شمار inventory ثبت‌شده در CMake به معنی تعداد آزمون‌های اجراشده نیست.
+G62R18 اعتبارسنجی محدود Workspace محلی XForm_test است، نه Full Regression پروژه و نه اثبات تطبیق byte-for-byte تمام فایل‌های یک commit عمومی Git با آن Workspace. عدد inventory برابر ۱۷۵٬۹۳۷ تعداد تست اجراشده نیست. به [رکورد تفصیلی اعتبارسنجی](docs/G62R18_VALIDATION_FA.md) و [وضعیت مهندسی جاری](docs/STATUS_FA.md) مراجعه کنید.
+
+سوابق قدیمی snapshot مربوط به N113-G62R16 و probe محدود G62R13 حفظ شده‌اند و بازنویسی نشده‌اند.
 
 ## معماری
 
