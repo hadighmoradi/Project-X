@@ -27,3 +27,8 @@ The repository is public and Discussions are enabled. Post one name idea per dis
 My goal is to support **x86-32 (X32)** and **x86-64 (X64)** on Windows and Linux, with macOS as a later target. The current code is only part of that plan: the integrated path is Windows x64/COFF; Linux has ELF64 components and a few limited checks, but no proven source-to-ELF path; x86-32 is not implemented; and Mach-O output for macOS is not ready.
 
 Here, X32 means 32-bit x86 and X64 means x86-64. AMD64 is the technical name used for the Windows x64 COFF path; it does not mean the project is limited to AMD processors.
+
+
+## Language design overview
+
+The public [language design overview](../language-design.html) explains the inspirations behind the design, the intended syntax, the compact-output strategy, and the boundary between current compiler evidence and future goals. It is a summary, not a substitute for the detailed design specifications.
