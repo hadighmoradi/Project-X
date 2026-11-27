@@ -102,3 +102,10 @@ G11=0/7
 spill_call_crossing=true
 XMM_NONEMPTY=OPEN_BLOCKED_NOT_PROVEN_IMPOSSIBLE
 ```
+
+
+## Publication follow-up — 27 November 2026
+
+The source snapshot was subsequently integrated into public `main` through PR #7. Source commit: `6e802faf646a301f124026d5d0661796dd97080b`; source merge commit: `320c8d737aa2dc7dd9989026c6ffa3781248e77b`. PR #6 supplied the bilingual documentation/site checkpoint and was merged first.
+
+This changes the public source-sync status to complete for the curated 194-file candidate, but it does **not** change the test provenance statement above: the original runner captured no source commit SHA. The 175,976-test historical PASS must not be attributed to the exact published commit until the required Windows/MSVC validation is rerun against it. GitHub status/workflow queries returned no CI checks for the two PR heads. See [the public main synchronization record](PROJECT_X_N114_PUBLIC_MAIN_SYNC_2026-11-27.md).
