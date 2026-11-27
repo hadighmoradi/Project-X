@@ -657,6 +657,52 @@ void test_c20_functions_without_logical_expressions_emit_no_occupancy_records() 
         "C20 function without logical expressions emitted an orphan occupancy record");
 }
 
+
+
+void require_xmm_live_across_nested_call_argument(const std::string& module_name,
+                                                  const std::string& logical_operator,
+                                                  const std::string& case_name) {
+    const std::string source =
+        "module " + module_name + "; "
+        "public function Main(float left, float right, bool flag, bool rhs) returns float { "
+        "return left + Blend(right, flag " + logical_operator + " rhs); } "
+        "private function Blend(float value, bool condition) returns float { return value; }";
+    const auto fixture = compile_fixture(source);
+    validate_fixture(fixture);
+    validate_occupancy_fixture(fixture);
+
+    const auto& graph = first_graph(fixture);
+    const auto captures = occupancy_for_function(
+        fixture.codegen.flow_expression_edge_occupancy_captures, 0U);
+    require(graph.expression_controls.size() == 1U && captures.size() == 4U,
+        case_name + " did not produce exactly one four-edge expression occupancy group");
+
+    const auto& expected_xmm_stack = captures.front().xmm_stack_order;
+    require(!expected_xmm_stack.empty(),
+        case_name + " did not keep the outer floating-point temporary live at the nested logical seams");
+    for (const auto reg : expected_xmm_stack) {
+        require(reg >= 6U && reg <= 15U,
+            case_name + " did not preserve the call-crossing floating temporary in a Win64 nonvolatile XMM register");
+    }
+    for (const auto& capture : captures) {
+        require(capture.capture_complete && capture.xmm_depth > 0U &&
+                capture.xmm_stack_order == expected_xmm_stack &&
+                capture.xmm_depth == expected_xmm_stack.size() &&
+                capture.xmm_occupancy.size() == expected_xmm_stack.size(),
+            case_name + " did not retain the same live XMM occupancy at all four Expression edges");
+    }
+}
+
+void test_c21_xmm_live_across_nested_and_call_argument() {
+    require_xmm_live_across_nested_call_argument(
+        "N114C21", "&&", "C21 nested AND call-argument fixture");
+}
+
+void test_c22_xmm_live_across_nested_or_call_argument() {
+    require_xmm_live_across_nested_call_argument(
+        "N114C22", "||", "C22 nested OR call-argument fixture");
+}
+
 } // namespace
 
 void run_n114_b13b_expression_branch_anchor_tests(int& passed, int& failed) {
@@ -680,4 +726,6 @@ void run_n114_b13b_expression_branch_anchor_tests(int& passed, int& failed) {
     run_case("N114B13BC18_expression_statement_domain_isolation", test_c18_expression_occupancy_remains_separate_from_statement_anchor_domain, passed, failed);
     run_case("N114B13BC19_nonzero_function_identity", test_c19_occupancy_records_keep_nonzero_function_identity, passed, failed);
     run_case("N114B13BC20_no_expression_records", test_c20_functions_without_logical_expressions_emit_no_occupancy_records, passed, failed);
+    run_case("N114B13BC21_xmm_live_across_nested_and_call_argument", test_c21_xmm_live_across_nested_and_call_argument, passed, failed);
+    run_case("N114B13BC22_xmm_live_across_nested_or_call_argument", test_c22_xmm_live_across_nested_or_call_argument, passed, failed);
 }
