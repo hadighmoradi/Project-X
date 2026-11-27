@@ -73,3 +73,27 @@ PUBLIC_SOURCE_SYNC=NOT_ESTABLISHED
 ```
 
 </div>
+
+
+## به‌روزرسانی انتشار — ۲۷ نوامبر ۲۰۲۶
+
+مالک مخزن در گفت‌وگوی جاری صریحاً ادغام دو PR نام‌برده را تأیید کرد. این دو تغییر از مسیر Pull Request ادغام شدند و نوشتن مستقیم روی `main` انجام نشد:
+
+- PR شمارهٔ ۶، مستندات و صفحات سایت — ادغام‌شده؛ Merge commit برابر `0bf01d27afb0cd7df35b1506096a0524db15654d`.
+- PR شمارهٔ ۷، Snapshot سورس N114 v10.63 — ادغام‌شده؛ کامیت سورس `6e802faf646a301f124026d5d0661796dd97080b` و Merge commit برابر `320c8d737aa2dc7dd9989026c6ffa3781248e77b`.
+- شاخهٔ عمومی `main` اکنون Diff پانزده‌مسیرهٔ سورس از کاندید curated شامل ۱۹۴ فایل را دارد.
+- اعتبارسنجی دقیق Windows/MSVC روی Commit منتشرشده همچنان باقی است، چون Runner تاریخی SHA سورس را ثبت نکرد. پرس‌وجوی PRها هیچ GitHub Status Check یا Workflow Run برنگرداند. هیچ ادعای Release/Tag یا گواهی Release مطرح نشد.
+
+روال پیش‌فرض همچنان Branch → Commit → Push → Pull Request است. Merge به تأیید جداگانه و مشخص کاربر نیاز دارد؛ تأیید ثبت‌شده در اینجا فقط شامل PRهای شمارهٔ ۶ و ۷ بود.
+
+```text
+PUBLIC_SOURCE_SYNC=INTEGRATED_IN_MAIN
+SOURCE_COMMIT=6e802faf646a301f124026d5d0661796dd97080b
+SOURCE_MERGE_COMMIT=320c8d737aa2dc7dd9989026c6ffa3781248e77b
+DOCS_MERGE_COMMIT=0bf01d27afb0cd7df35b1506096a0524db15654d
+PR6=MERGED
+PR7=MERGED
+EXACT_SOURCE_COMMIT_REGRESSION=PENDING_PROVENANCE_AND_RERUN
+GITHUB_CI_CHECKS=NONE_RETURNED
+RELEASE_CERTIFICATION=NOT_CLAIMED
+```
