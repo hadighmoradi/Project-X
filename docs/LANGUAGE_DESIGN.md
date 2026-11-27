@@ -104,27 +104,17 @@ This is a real but limited part of the larger plan. It is not yet the complete X
 
 ## Current status and next steps
 
-The latest recorded validation is **G62R18 (24 November 2026)**, run against the local **N113-G62R16** workspace baseline.
+The latest recorded validation is **N114 v10.63 Full Regression (27 November 2026)** on a user-run local Windows/MSVC workspace.
 
-- The N111, N112, and N113 focused MSVC suites passed **252/252 tests**: 23/23, 25/25, and 204/204, with zero failures and zero skipped cases.
-- Build environment: Windows x64, MSVC 19.51.36248, CMake 4.4.4, NMake Makefiles, Debug with /Z7. Configure and build both exited 0.
-- Sixteen named source/build/test files matched their expected SHA-256 values before and after the run.
-- This closes the N113 operation-level spill/reload validation scope.
-- General CFG edge insertion is still not ready: G11 is 0/7 and Edge Bundle insertion was not performed. Broader CFG Edge Bundle integration moves to N114.
-- Full regression and end-to-end execution of a generated PE were not part of this validation.
+- Declared test inventory: **175,976 / 175,976 passed** across 26 valid batches.
+- Windows build matrix: **9/9 targets** built with exit code 0 using serial NMake.
+- Global test IDs: 175,976 unique, zero failed IDs, zero internal or cross-batch duplicates.
+- Seven named Source SHA-256 guards passed.
+- G9 remains statement-edge-only; G10 remains do-not-rebuild; G11 remains 0/7.
+- `spill_call_crossing=true`; non-empty XMM remains open / blocked-not-proven-impossible.
+- Edge Bundle insertion and generated-PE end-to-end execution are not established by this evidence.
 
-The reported project inventory total (175,937) is not the number of tests run. G62R18 executed only the 252 cases in the three named suites. The result applies to the local workspace and its 16-file hash manifest; it is not a claim that the entire public repository at a particular Git commit was independently matched to that workspace.
-
-See the [G62R18 validation record](G62R18_VALIDATION.md) for the test totals, exact environment, SHA-256 manifest, evidence-package digest, and limitations.
-
-The platform plan is broader than today's implementation:
-
-| Platform | Current state |
-|---|---|
-| Windows x64 | The integrated compiler path creates AMD64 COFF objects and a link plan; the Windows linker produces PE32+ |
-| Linux x64 | Some ELF64 parts and limited LLD tests exist, but a complete source-to-ELF path is not established |
-| x86-32 | Planned; not implemented in the current backend |
-| macOS | A future goal; Mach-O output and macOS validation are not in place |
+**Source provenance limitation:** the runner did not record a source Git commit SHA. A read-only comparison found that the local tested source candidate is not identical to the public `main` tree reviewed for this record. The Full Regression result is therefore evidence for the local workspace and its declared inventory; it is not proof that the current public repository source is byte-for-byte the same. Complete public source-tree synchronization remains pending. See the [N114 Full Regression milestone](milestones/PROJECT_X_N114_V10_63_FULL_REGRESSION_WINDOWS_MSVC_2026-11-27.md) and [current engineering status](STATUS.md).
 
 ## Help shape the language
 

@@ -20,12 +20,15 @@ This is a public summary of the milestones recorded in the project archives. It 
 | N113-G1–G33 | FunctionEmitter edge/operand evidence, diagnostics, and readiness gates. The recorded gates keep general edge insertion disabled. |
 | N113-G57–G62R16 | Readiness and bounded probe analysis, source cross-checks, and a 14-file source snapshot. |
 | N113-G62R18 | Scoped MSVC validation of N111/N112/N113: 252/252 passed; operation-level spill/reload scope closed; CFG Edge Bundle work deferred to N114. |
+| N114 v10.63 | Windows/MSVC Full Regression: 175,976/175,976, 26/26 batches and 9/9 builds; public source-tree synchronization remains pending. |
 
 ## Current continuation point
 
-The latest validation record is G62R18 (24 November 2026), run against the local N113-G62R16 workspace baseline. The N111, N112, and N113 focused suites passed 252/252 tests under MSVC 19.51.36248 and CMake 4.4.4. This closes the N113 operation-level spill/reload validation scope.
+N114 v10.63 has a recorded Windows/MSVC Full Regression PASS for the declared 175,976-test inventory: 26/26 batches, zero failures, zero duplicate IDs, and a 9/9 target build matrix. The seven named source guards matched their final SHA-256 values.
 
-The next engineering scope is N114: CFG Edge Bundle and broader CFG-edge integration. G11 remains 0/7 and edge-bundle insertion was not performed in G62R18. Full regression and end-to-end execution of a generated PE remain unverified. See [G62R18 validation record](G62R18_VALIDATION.md) for exact scope and evidence.
+This validation came from the user's local workspace; the runner did not record a source commit SHA. The local tested source tree has not yet been proven identical to public `main`. The documentation records the local result but does not synchronize compiler source. Complete public source-tree reconciliation is the next publication boundary. See the [N114 Full Regression milestone](milestones/PROJECT_X_N114_V10_63_FULL_REGRESSION_WINDOWS_MSVC_2026-11-27.md).
+
+N114 technical gates remain explicit: G9 is statement-edge-only, G10 is do-not-rebuild, G11 is 0/7, `spill_call_crossing=true`, and non-empty XMM remains open / blocked-not-proven-impossible. No Edge Bundle insertion or generated-PE end-to-end validation is claimed.
 
 ## Historical record gaps
 

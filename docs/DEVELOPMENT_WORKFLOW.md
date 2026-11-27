@@ -29,21 +29,28 @@ A code example in a design document is not proof that the compiler supports it. 
 
 ## Keep the project pages up to date
 
-When a step is finished and checked, update the relevant project notes:
+After each meaningful build, test, regression, runner/validator change, source audit, or engineering decision, assess whether the result is suitable for public publication. When it is, update the relevant pages as part of that same work:
 
-- docs/STATUS.md for the latest status and next step.
-- docs/DEVELOPMENT_HISTORY.md for completed milestones.
-- docs/ARCHITECTURE.md or the language design pages when a design changes.
-- The test notes and README when the instructions or public claims change.
+- `README.md` and `README_FA.md` for the public project summary.
+- `docs/STATUS.md` and `docs/STATUS_FA.md` for current engineering status.
+- Development history pages for completed milestones.
+- Getting-started/build and language-design pages when their instructions or claims change.
+- Website pages when they display a changed status, result, or instruction.
 
-Update the English and Persian pages together whenever possible.
+Update English and Persian pages together. Add a dated milestone for substantial test or validation results, and preserve historical records instead of overwriting them.
 
 ## Publish the result
 
-For each completed step, publish the change to GitHub with a clear commit message. For larger changes, use a focused branch and pull request. Link the related tests and notes so that someone else can follow the result.
+The user has granted continuing authorization for focused branch creation, commits, pushes, and Pull Request creation/updates for suitable Project X changes. Do not ask for repeated permission for those branch-scoped actions.
 
-Keep old test results and project history. Do not replace a past result with a new one; add the new result and explain what changed.
+Use the default workflow: **Branch → Commit → Push → Pull Request; no Merge.** Inspect `main` and existing PRs first, avoid duplicate work, use clear commit messages, and read back the resulting branch/commit/PR to verify the publication.
+
+Merging to `main`, direct writes to `main`, releases/tags, destructive file or branch changes, force-push/history rewrites, and security/permission changes still require separate explicit approval.
+
+If source provenance, CI, or required validation is incomplete, keep the PR in Draft and state the limit. A local-workspace test result must not be represented as proof that public `main` contains the exact tested source unless commit SHA and complete source-tree identity are established.
+
+See the [continuous GitHub synchronization policy](operations/GITHUB_CONTINUOUS_SYNC_POLICY.md) for the full workflow.
 
 ## The main rule
 
-A development step is complete when the work has been checked, its results and limits have been recorded, the related project pages have been updated, and the change has been published on GitHub.
+A development step is complete when the work has been checked, its results and limits have been recorded, the related project pages have been updated, and the suitable change has been published on a reviewed GitHub branch and Pull Request. Do not merge automatically.

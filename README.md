@@ -43,23 +43,24 @@ I started this project because I want fast programs and small native executables
 
 I call the project **X** for now; its final name is still open. The repository is public and GitHub Discussions are open. You can suggest a name in [Ideas](https://github.com/hadighmoradi/Project-X/discussions/categories/ideas), one idea per discussion, and briefly explain why it fits. After the community has discussed the suggestions, I will shortlist candidates and open a poll in [Polls](https://github.com/hadighmoradi/Project-X/discussions/categories/polls). The name with the most votes when the poll closes will replace X. See [Project vision and naming](docs/PROJECT_VISION_AND_NAMING.md).
 
-## Current validation checkpoint
+## Latest validated workspace regression
 
-**G62R18 · 24 November 2026**  
-**Source/workspace baseline: N113-G62R16**
+**N114 v10.63 · 27 November 2026 · `PASS_FULL_REGRESSION`**
 
-| Area | Result |
-|---|---|
-| Focused suites | N111 23/23, N112 25/25, N113 204/204 — 252/252 passed, 0 failed, 0 skipped. |
-| Build host | Windows x64 · MSVC 19.51.36248 · CMake 4.4.4 · NMake · Debug /Z7. Configure and build exited 0. |
-| Source integrity | 16 named files matched expected SHA-256 values before and after the run. |
-| N113 operation-level spill/reload | Validation scope closed by G62R18 evidence. |
-| CFG edge insertion | Not ready; G11 remains 0/7 and Edge Bundle insertion was not performed. Broader work moves to N114. |
-| Full regression | Not run. |
+| Measure | Result |
+|---|---:|
+| Declared inventory | **175,976 / 175,976 passed** |
+| Valid batches | **26 / 26** |
+| Failed tests / global duplicate IDs | **0 / 0** |
+| Windows build matrix | **9 / 9 targets, exit code 0** |
+| Seven source hash guards | **7 / 7, zero failures** |
 
-G62R18 is a scoped validation of the local XForm_test workspace, not a full-project regression and not proof that every file in a particular public Git commit is byte-identical to that workspace. The CMake inventory figure of 175,937 is not the number of tests executed. See the [detailed validation record](docs/G62R18_VALIDATION.md) and [current engineering status](docs/STATUS.md).
+This is a user-run Windows/MSVC result for the local validation workspace. **The tested workspace has not yet been proven byte-for-byte identical to the public `main` branch.** The runner did not record a source commit SHA, and a read-only check found source-tree differences from the public revision. This record therefore must not be read as proof that the current public `main` already contains the validated N114 source. Complete source synchronization remains a separate, pending step.
 
-The earlier N113-G62R16 source-snapshot and G62R13 bounded-probe records remain historical evidence; they have not been overwritten.
+The read-only source-tree audit found 193 existing public source paths, all present in the candidate, plus one new N114 B13-B test. 179 existing files match public Git blob identities after SPDX restoration; 14 existing files contain substantive code changes. A 194-file source-only bundle is prepared, and a dedicated source branch is reserved; the push and commit-level validation are still pending. See the [source-tree reconciliation audit](docs/milestones/PROJECT_X_N114_SOURCE_TREE_RECONCILIATION_AUDIT_2026-11-27.md).
+
+See the [Full Regression milestone record](docs/milestones/PROJECT_X_N114_V10_63_FULL_REGRESSION_WINDOWS_MSVC_2026-11-27.md) and [engineering status](docs/STATUS.md). Historical G62R18 evidence remains available and has not been overwritten.
+
 
 ## Architecture
 
