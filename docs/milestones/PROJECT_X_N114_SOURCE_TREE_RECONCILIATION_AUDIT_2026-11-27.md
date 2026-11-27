@@ -66,3 +66,12 @@ SOURCE_SYNC_BRANCH_STATUS=RESERVED_AWAITING_PUSH
 SOURCE_SYNC_PR=NOT_CREATED
 PUBLIC_SOURCE_SYNC=NOT_ESTABLISHED
 ```
+
+
+## Publication follow-up — 27 November 2026
+
+After this audit was first recorded, the source bundle was applied to and pushed on `sync/n114-v10.63-source-tree-2026-11-27` at commit `6e802faf646a301f124026d5d0661796dd97080b`. The dedicated source PR #7 was merged into public `main`; the resulting source merge commit is `320c8d737aa2dc7dd9989026c6ffa3781248e77b`. The documentation PR #6 was merged first at `0bf01d27afb0cd7df35b1506096a0524db15654d`.
+
+The remote source PR changed exactly 15 paths: 14 existing source files and the new N114 B13-B test. The 194-file bundle hash, ZIP structure, all 194 postimage file hashes and staged Git blob IDs, and the exact staged path delta passed the local pre-commit guards; the pushed branch SHA read-back matched the local commit. The source snapshot is therefore integrated into public `main`.
+
+This publication does not repair the missing test-run commit provenance. The historical Windows/MSVC Full Regression runner did not record a source SHA, so validation against the exact published source commit remains pending. See [the public main synchronization milestone](PROJECT_X_N114_PUBLIC_MAIN_SYNC_2026-11-27.md). No release certification is claimed.
