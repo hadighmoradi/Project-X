@@ -55,12 +55,11 @@ I call the project **X** for now; its final name is still open. The repository i
 | Windows build matrix | **9 / 9 targets, exit code 0** |
 | Seven source hash guards | **7 / 7, zero failures** |
 
-This is a user-run Windows/MSVC result for the local validation workspace. **The tested workspace has not yet been proven byte-for-byte identical to the public `main` branch.** The runner did not record a source commit SHA, and a read-only check found source-tree differences from the public revision. This record therefore must not be read as proof that the current public `main` already contains the validated N114 source. Complete source synchronization remains a separate, pending step.
+The N114 v10.63 source snapshot is now integrated into public `main`. Source commit `6e802faf646a301f124026d5d0661796dd97080b` was merged through [PR #7](https://github.com/hadighmoradi/Project-X/pull/7); the source merge commit is `320c8d737aa2dc7dd9989026c6ffa3781248e77b`. The curated bundle contained 194 files: all 193 previously tracked source paths plus the new N114 B13-B test. The source PR changed 15 paths (14 existing files and one new file).
 
-The read-only source-tree audit found 193 existing public source paths, all present in the candidate, plus one new N114 B13-B test. 179 existing files match public Git blob identities after SPDX restoration; 14 existing files contain substantive code changes. A 194-file source-only bundle is prepared, and a dedicated source branch is reserved; the push and commit-level validation are still pending. See the [source-tree reconciliation audit](docs/milestones/PROJECT_X_N114_SOURCE_TREE_RECONCILIATION_AUDIT_2026-11-27.md).
+The Full Regression result remains evidence for the user's local Windows/MSVC workspace. The runner did not record a source commit SHA, so this historical PASS is **not** claimed as a run against source commit `6e802faf646a301f124026d5d0661796dd97080b` or the merge commit. Validation against the exact published source revision remains pending; seven named hash guards do not establish full-tree test provenance.
 
-See the [Full Regression milestone record](docs/milestones/PROJECT_X_N114_V10_63_FULL_REGRESSION_WINDOWS_MSVC_2026-11-27.md) and [engineering status](docs/STATUS.md). Historical G62R18 evidence remains available and has not been overwritten.
-
+See the [source-tree reconciliation and publication audit](docs/milestones/PROJECT_X_N114_SOURCE_TREE_RECONCILIATION_AUDIT_2026-11-27.md), the [public main synchronization record](docs/milestones/PROJECT_X_N114_PUBLIC_MAIN_SYNC_2026-11-27.md), and the [Full Regression milestone](docs/milestones/PROJECT_X_N114_V10_63_FULL_REGRESSION_WINDOWS_MSVC_2026-11-27.md). Historical G62R18 evidence remains available and has not been overwritten.
 
 ## Architecture
 
