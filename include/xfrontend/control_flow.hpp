@@ -20,12 +20,14 @@ using FlowOperationId = std::uint64_t;
 using FlowControlStatementId = std::uint64_t;
 using FlowControlConstructId = std::uint64_t;
 using FlowEdgeId = std::uint64_t;
+using FlowExpressionId = std::uint64_t;
 constexpr FlowBlockId InvalidFlowBlockId = static_cast<FlowBlockId>(-1);
 constexpr FlowVariableId InvalidFlowVariableId = static_cast<FlowVariableId>(-1);
 constexpr FlowOperationId InvalidFlowOperationId = 0U;
 constexpr FlowControlStatementId InvalidFlowControlStatementId = 0U;
 constexpr FlowControlConstructId InvalidFlowControlConstructId = 0U;
 constexpr FlowEdgeId InvalidFlowEdgeId = 0U;
+constexpr FlowExpressionId InvalidFlowExpressionId = 0U;
 constexpr std::uint32_t InvalidFlowOperationIndex = static_cast<std::uint32_t>(-1);
 
 
@@ -45,7 +47,19 @@ enum class FlowEdgeKind : std::uint8_t {
     ForEachEntry,
     ForEachBody,
     ForEachExit,
-    ForEachBack
+    ForEachBack,
+    // Expression-level short-circuit connections. These edges are kept in the
+    // identity table even when analysis-infeasible; only feasible edges enter
+    // BasicBlock predecessor/successor adjacency.
+    ExpressionEvaluateRhs,
+    ExpressionShortCircuit,
+    ExpressionRhsMerge,
+    ExpressionShortMerge
+};
+
+enum class FlowEdgeDomain : std::uint8_t {
+    Statement,
+    Expression
 };
 
 struct FlowControlStatementIdentity {
@@ -69,6 +83,21 @@ struct FlowEdge {
     FlowControlStatementId control_statement_id = InvalidFlowControlStatementId;
     FlowControlConstructId control_construct_id = InvalidFlowControlConstructId;
     SourceSpan span{};
+    FlowEdgeDomain domain = FlowEdgeDomain::Statement;
+    FlowExpressionId expression_id = InvalidFlowExpressionId;
+    bool analysis_feasible = true;
+    bool machine_emission_required = true;
+};
+
+struct FlowExpressionControl {
+    FlowExpressionId id = InvalidFlowExpressionId;
+    ExprKind kind = ExprKind::Binary;
+    std::string operator_text;
+    SourceSpan span{};
+    // Non-owning identity bridge to the exact parser AST node. The CompilationUnit
+    // must outlive Flow lowering and FunctionEmitter; this pointer is never
+    // serialized and is not used as a durable external identifier.
+    const Expression* ast_expression = nullptr;
 };
 
 // Deterministic pre-order IDs for control statements in one function body.
@@ -162,6 +191,7 @@ struct ControlFlowGraph {
     std::size_t ownership_analysis_iterations = 0;
     std::vector<FlowControlStatement> control_statements;
     std::vector<FlowEdge> edges;
+    std::vector<FlowExpressionControl> expression_controls;
 };
 
 struct ControlFlowResult {

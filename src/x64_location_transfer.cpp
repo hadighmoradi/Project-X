@@ -634,7 +634,9 @@ NativeX64FlowEdgeLocationAuditPlan audit_native_x64_flow_edge_locations(
                 return fail("N113H0011", "G4 home-Phi incoming version does not map to the same source home and exact predecessor");
             const auto edge = std::find_if(function.edges.begin(), function.edges.end(),
                 [&](const FlowEdge& candidate) {
-                    return candidate.from_block_id == incoming.predecessor_block_id &&
+                    return candidate.domain == FlowEdgeDomain::Statement &&
+                           candidate.analysis_feasible &&
+                           candidate.from_block_id == incoming.predecessor_block_id &&
                            candidate.to_block_id == phi.block_id;
                 });
             if (edge == function.edges.end())
@@ -646,19 +648,30 @@ NativeX64FlowEdgeLocationAuditPlan audit_native_x64_flow_edge_locations(
 
     std::set<FlowEdgeId> edge_ids;
     std::set<std::pair<NativeRegisterBlockId, NativeRegisterBlockId>> edge_endpoints;
+    std::set<std::pair<NativeRegisterBlockId, NativeRegisterBlockId>> feasible_topology_endpoints;
+    std::size_t statement_edges_audited = 0U;
     for (const auto& edge : function.edges) {
         if (edge.id == InvalidFlowEdgeId || !edge_ids.insert(edge.id).second ||
             edge.from_block_id >= ir.blocks.size() || edge.to_block_id >= ir.blocks.size())
             return fail("N113H0013", "G4 FlowEdge table contains an invalid ID, duplicate, or out-of-range endpoint");
         const auto predecessor = static_cast<NativeRegisterBlockId>(edge.from_block_id);
         const auto successor = static_cast<NativeRegisterBlockId>(edge.to_block_id);
-        if (ir.blocks[predecessor].id != predecessor || ir.blocks[successor].id != successor ||
+        const auto endpoint = std::make_pair(predecessor, successor);
+        if (edge.analysis_feasible) feasible_topology_endpoints.insert(endpoint);
+        if (edge.domain == FlowEdgeDomain::Expression) {
+            // Expression control edges shape N112's CFG, but are deliberately
+            // excluded from N113's statement-edge transfer/readiness proof.
+            continue;
+        }
+        if (edge.domain != FlowEdgeDomain::Statement || !edge.analysis_feasible ||
+            ir.blocks[predecessor].id != predecessor || ir.blocks[successor].id != successor ||
             std::find(ir.blocks[predecessor].successors.begin(), ir.blocks[predecessor].successors.end(), successor) ==
                 ir.blocks[predecessor].successors.end() ||
             std::find(ir.blocks[successor].predecessors.begin(), ir.blocks[successor].predecessors.end(), predecessor) ==
                 ir.blocks[successor].predecessors.end() ||
             !edge_endpoints.emplace(predecessor, successor).second)
-            return fail("N113H0014", "G4 FlowEdge identity disagrees with or duplicates NativeRegisterIR predecessor/successor topology");
+            return fail("N113H0014", "G4 statement FlowEdge identity disagrees with NativeRegisterIR topology");
+        ++statement_edges_audited;
         if (liveness.instructions[predecessor].size() != ir.blocks[predecessor].instructions.size() ||
             liveness.instructions[successor].size() != ir.blocks[successor].instructions.size() ||
             intervals.instruction_positions[predecessor].size() != ir.blocks[predecessor].instructions.size() ||
@@ -734,12 +747,13 @@ NativeX64FlowEdgeLocationAuditPlan audit_native_x64_flow_edge_locations(
     // Partial edge metadata would otherwise make a successful audit look complete.
     for (const auto& block : ir.blocks) {
         for (const auto successor : block.successors) {
-            if (edge_endpoints.find({block.id, successor}) == edge_endpoints.end())
-                return fail("N113H001D", "G4 FlowEdge table omits a NativeRegisterIR CFG successor edge");
+            if (feasible_topology_endpoints.find({block.id, successor}) == feasible_topology_endpoints.end())
+                return fail("N113H001D", "G4 FlowEdge table omits a feasible NativeRegisterIR CFG successor edge");
         }
     }
-    if (edge_endpoints.size() != function.edges.size())
-        return fail("N113H001E", "G4 FlowEdge table does not exactly match the CFG edge topology");
+    if (edge_endpoints.size() != statement_edges_audited ||
+        result.edges_audited != statement_edges_audited)
+        return fail("N113H001E", "G4 statement FlowEdge audit count does not match its exact edge identity set");
 
     // A Phi must be represented by one exact CFG edge per incoming predecessor.
     // The source-level Emitter still uses its N111 canonical home; differing
@@ -1234,8 +1248,9 @@ NativeX64FlowEdgeScheduleReadinessPlan audit_native_x64_flow_edge_schedule_readi
 
     std::map<FlowEdgeId, const FlowEdge*> flow_edges_by_id;
     for (const auto& edge : function.edges) {
+        if (edge.domain != FlowEdgeDomain::Statement || !edge.analysis_feasible) continue;
         if (edge.id == InvalidFlowEdgeId || !flow_edges_by_id.emplace(edge.id, &edge).second)
-            return fail("N113H0049", "G8 Function FlowEdge table contains an invalid or duplicate EdgeId");
+            return fail("N113H0049", "G8 statement FlowEdge table contains an invalid or duplicate EdgeId");
     }
     std::map<FlowEdgeId, const X64FlowBranchAnchor*> branch_anchors_by_edge;
     for (const auto& anchor : branch_anchors) {
@@ -2534,9 +2549,13 @@ NativeX64GpXmmExpansionLivenessPlan audit_native_x64_gp_memory_cycle_xmm_expansi
         return fail("N113G25E0001",
             "G25 requires valid CFG IR, converged liveness, successful G4/G6 plans and a non-insertion-ready candidate inventory");
     }
-    if (edge_location_audit.edges_audited != function.edges.size()) {
+    const std::size_t statement_edge_count = static_cast<std::size_t>(std::count_if(
+        function.edges.begin(), function.edges.end(), [](const FlowEdge& edge) {
+            return edge.domain == FlowEdgeDomain::Statement && edge.analysis_feasible;
+        }));
+    if (edge_location_audit.edges_audited != statement_edge_count) {
         return fail("N113G25E0002",
-            "G25 G4 edge count does not cover the exact Function CFG edge table");
+            "G25 G4 edge count does not cover the exact feasible statement-edge table");
     }
     if (edge_location_audit.live_values_audited != edge_location_audit.values.size()) {
         return fail("N113G25E0016",
@@ -2559,10 +2578,11 @@ NativeX64GpXmmExpansionLivenessPlan audit_native_x64_gp_memory_cycle_xmm_expansi
 
     std::map<FlowEdgeId, const FlowEdge*> edges_by_id;
     for (const auto& edge : function.edges) {
+        if (edge.domain != FlowEdgeDomain::Statement || !edge.analysis_feasible) continue;
         if (edge.id == InvalidFlowEdgeId || edge.from_block_id >= validated.normalized_function.blocks.size() ||
             edge.to_block_id >= validated.normalized_function.blocks.size() ||
             !edges_by_id.emplace(edge.id, &edge).second) {
-            return fail("N113G25E0006", "G25 Function CFG edge table contains an invalid or duplicate exact EdgeId");
+            return fail("N113G25E0006", "G25 feasible statement-edge table contains an invalid or duplicate exact EdgeId");
         }
     }
 

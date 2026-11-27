@@ -16,6 +16,7 @@ void run_n109b_n110a_machine_transfer_tests(int& passed, int& failed);
 void run_n111_machine_location_plan_tests(int& passed, int& failed);
 void run_n112_flow_segment_plan_tests(int& passed, int& failed);
 void run_n113_flow_spill_reload_resolution_tests(int& passed, int& failed);
+void run_n114_b13b_expression_branch_anchor_tests(int& passed, int& failed);
 
 #if defined(_MSC_VER)
 #ifndef WIN32_LEAN_AND_MEAN
@@ -156,6 +157,8 @@ void run_n102_n107_allocator_hardening_tests(int& passed, int& failed);
 // N112 test entry point is declared with the other test functions above.
 #elif defined(XFRONTEND_SUITE_N113)
 // N113 test entry point is declared with the other test functions above.
+#elif defined(XFRONTEND_SUITE_N114_B13B)
+// N114 B13-B test entry point is declared with the other test functions above.
 #elif defined(XFRONTEND_SUITE_PE64)
 void run_pe64_n44_tests(int& passed, int& failed);
 void run_pe64_n45_tests(int& passed, int& failed);
@@ -279,6 +282,8 @@ int main() {
     run_n112_flow_segment_plan_tests(passed, failed);
 #elif defined(XFRONTEND_SUITE_N113)
     run_n113_flow_spill_reload_resolution_tests(passed, failed);
+#elif defined(XFRONTEND_SUITE_N114_B13B)
+    run_n114_b13b_expression_branch_anchor_tests(passed, failed);
 #elif defined(XFRONTEND_SUITE_PE64)
     run_pe64_n44_tests(passed, failed);
     run_pe64_n45_tests(passed, failed);

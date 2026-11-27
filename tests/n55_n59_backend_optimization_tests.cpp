@@ -144,7 +144,15 @@ void test_n56_frame_size_tracks_peak_slots(std::size_t index) {
         "n56-frame-peak-" + std::to_string(index));
     require(result.succeeded(), "peak frame analysis failed");
     require(result.stats.local_stack_slots_peak == 2U, "frame peak did not match max simultaneously-live locals");
-    require(result.stats.stack_frame_bytes == 16U, "frame size did not use peak slot count with 16-byte alignment");
+    const std::uint64_t required_frame_bytes =
+        static_cast<std::uint64_t>(result.stats.local_stack_slots_peak) * 8U +
+        static_cast<std::uint64_t>(result.stats.native_spill_slots) * 8U +
+        static_cast<std::uint64_t>(result.stats.callee_saved_gp_registers) * 8U +
+        static_cast<std::uint64_t>(result.stats.callee_saved_xmm_registers) * 16U;
+    const std::uint64_t expected_aligned_frame_bytes =
+        (required_frame_bytes + 15U) & ~std::uint64_t(15U);
+    require(result.stats.stack_frame_bytes == expected_aligned_frame_bytes,
+            "frame size did not account for peak local slots, spills, callee-save areas, and 16-byte alignment");
 }
 
 void test_n57_nested_integer_constants_fold(std::size_t index) {

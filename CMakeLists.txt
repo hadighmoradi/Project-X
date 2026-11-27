@@ -9,7 +9,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 # Update this cumulative count whenever a milestone adds regression cases.
-set(XFRONTEND_TEST_INVENTORY_TOTAL 175937)
+set(XFRONTEND_TEST_INVENTORY_TOTAL 175976)
 
 add_library(xfrontend
     src/source_manager.cpp
@@ -106,6 +106,7 @@ add_xfrontend_suite_target(xfrontend_tests_n109b_n110a XFRONTEND_SUITE_N109B_N11
 add_xfrontend_suite_target(xfrontend_tests_n111 XFRONTEND_SUITE_N111 tests/n111_machine_location_plan_tests.cpp)
 add_xfrontend_suite_target(xfrontend_tests_n112 XFRONTEND_SUITE_N112 tests/n112_flow_segment_plan_tests.cpp)
 add_xfrontend_suite_target(xfrontend_tests_n113 XFRONTEND_SUITE_N113 tests/n113_flow_spill_reload_resolution_tests.cpp)
+add_xfrontend_suite_target(xfrontend_tests_n114_b13b XFRONTEND_SUITE_N114_B13B tests/n114_b13b_expression_branch_anchor_tests.cpp)
 
 add_executable(emit_n84_n89_native_exe tools/emit_n84_n89_native_exe.cpp)
 target_link_libraries(emit_n84_n89_native_exe PRIVATE xfrontend)

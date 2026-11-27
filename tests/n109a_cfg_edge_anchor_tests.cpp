@@ -88,6 +88,10 @@ bool is_branch_anchor_edge(FlowEdgeKind kind) {
     case FlowEdgeKind::ForEachBody:
     case FlowEdgeKind::ForEachExit:
     case FlowEdgeKind::ForEachBack:
+    case FlowEdgeKind::ExpressionEvaluateRhs:
+    case FlowEdgeKind::ExpressionShortCircuit:
+    case FlowEdgeKind::ExpressionRhsMerge:
+    case FlowEdgeKind::ExpressionShortMerge:
         return false;
     }
     return false;
@@ -130,7 +134,10 @@ void test_cfg_edges_have_stable_identity_and_valid_topology(unsigned int variant
         require(edge.id == other.id && edge.from_block_id == other.from_block_id &&
                 edge.to_block_id == other.to_block_id && edge.kind == other.kind &&
                 edge.control_statement_id == other.control_statement_id &&
-                edge.control_construct_id == other.control_construct_id,
+                edge.control_construct_id == other.control_construct_id &&
+                edge.domain == other.domain && edge.expression_id == other.expression_id &&
+                edge.analysis_feasible == other.analysis_feasible &&
+                edge.machine_emission_required == other.machine_emission_required,
             "N109A repeated CFG build changed a stable edge identity");
         require(edge.id != InvalidFlowEdgeId && ids.insert(edge.id).second,
             "N109A CFG edge ID is invalid or duplicated");
@@ -140,10 +147,12 @@ void test_cfg_edges_have_stable_identity_and_valid_topology(unsigned int variant
             "N109A edge endpoint pair is duplicated");
         const auto& from = graph.blocks[edge.from_block_id];
         const auto& to = graph.blocks[edge.to_block_id];
-        require(std::find(from.successors.begin(), from.successors.end(), edge.to_block_id) != from.successors.end(),
-            "N109A edge is missing from its source successor list");
-        require(std::find(to.predecessors.begin(), to.predecessors.end(), edge.from_block_id) != to.predecessors.end(),
-            "N109A edge is missing from its target predecessor list");
+        const bool in_successors = std::find(from.successors.begin(), from.successors.end(),
+            edge.to_block_id) != from.successors.end();
+        const bool in_predecessors = std::find(to.predecessors.begin(), to.predecessors.end(),
+            edge.from_block_id) != to.predecessors.end();
+        require(in_successors == edge.analysis_feasible && in_predecessors == edge.analysis_feasible,
+            "N109A edge feasibility does not match predecessor/successor adjacency");
         if (edge.control_statement_id != InvalidFlowControlStatementId) {
             require(find_control(graph, edge.control_statement_id) != nullptr,
                 "N109A edge references an unknown control statement");
@@ -158,8 +167,12 @@ void test_cfg_edges_have_stable_identity_and_valid_topology(unsigned int variant
     }
     std::size_t successor_count = 0U;
     for (const auto& block : graph.blocks) successor_count += block.successors.size();
-    require(successor_count == graph.edges.size(),
-        "N109A edge table does not cover each successor relation exactly once");
+    const std::size_t feasible_edge_count = static_cast<std::size_t>(std::count_if(
+        graph.edges.begin(), graph.edges.end(), [](const FlowEdge& edge) {
+            return edge.analysis_feasible;
+        }));
+    require(successor_count == feasible_edge_count,
+        "N109A feasible-edge table does not cover each successor relation exactly once");
 }
 
 void test_break_continue_edges_bind_to_enclosing_loop(unsigned int variant) {
@@ -319,6 +332,122 @@ void test_branch_anchor_offsets_follow_stack_probe_insertion() {
     }
 }
 
+void test_bridge_preserves_expression_edge_identity_and_controls() {
+    const auto parsed = parse_valid(
+        "function Main(bool flag, int value) returns bool { return false && Side(flag || (value > 0)); }");
+    const auto flow = analyze_control_flow(parsed.unit);
+    const auto lowered = lower_control_flow_to_native_register_ir(parsed.unit);
+    require(flow.succeeded() && lowered.succeeded && flow.functions.size() == 1U &&
+            lowered.functions.size() == 1U,
+        "B13A bridge fixture failed before identity comparison");
+    const auto& source = flow.functions.front();
+    const auto& target = lowered.functions.front();
+    require(source.expression_controls.size() == 2U &&
+            target.expression_controls.size() == source.expression_controls.size(),
+        "B13A bridge dropped ExpressionControl identities");
+    for (std::size_t index = 0U; index < source.expression_controls.size(); ++index) {
+        const auto& left = source.expression_controls[index];
+        const auto& right = target.expression_controls[index];
+        require(left.id == right.id && left.kind == right.kind &&
+                left.operator_text == right.operator_text &&
+                left.span.start.byte_offset == right.span.start.byte_offset &&
+                left.span.end.byte_offset == right.span.end.byte_offset &&
+                left.span.source_id == right.span.source_id,
+            "B13A bridge changed ExpressionControl identity or source metadata");
+    }
+    require(target.edges.size() == source.edges.size(),
+        "B13A bridge dropped one or more expression/statement edge records");
+    for (std::size_t index = 0U; index < source.edges.size(); ++index) {
+        const auto& left = source.edges[index];
+        const auto& right = target.edges[index];
+        require(left.id == right.id && left.from_block_id == right.from_block_id &&
+                left.to_block_id == right.to_block_id && left.kind == right.kind &&
+                left.domain == right.domain && left.expression_id == right.expression_id &&
+                left.analysis_feasible == right.analysis_feasible &&
+                left.machine_emission_required == right.machine_emission_required,
+            "B13A bridge changed expression-edge identity or feasibility/emission metadata");
+    }
+}
+
+void test_unreachable_rhs_machine_operations_are_retained_in_native_ir() {
+    const auto parsed = parse_valid(
+        "function Side(bool flag) returns bool { return flag; } "
+        "function Main(int value) returns bool { return false && Side(value > 0); }");
+    const auto flow = analyze_control_flow(parsed.unit);
+    const auto lowered = lower_control_flow_to_native_register_ir(parsed.unit);
+    require(flow.succeeded() && lowered.succeeded && lowered.functions.size() == 2U,
+        "B13A unreachable RHS bridge fixture failed");
+    const auto& source = flow.functions[1U];
+    const auto& target = lowered.functions[1U];
+    const auto rhs_edge = std::find_if(source.edges.begin(), source.edges.end(),
+        [](const FlowEdge& edge) {
+            return edge.domain == FlowEdgeDomain::Expression &&
+                   edge.kind == FlowEdgeKind::ExpressionEvaluateRhs;
+        });
+    require(rhs_edge != source.edges.end() && !rhs_edge->analysis_feasible &&
+            rhs_edge->machine_emission_required,
+        "B13A RHS must be infeasible for analysis but retained for code emission");
+    require(rhs_edge->to_block_id < target.register_ir.blocks.size(),
+        "B13A RHS block is missing from NativeRegisterIR");
+    const auto& rhs_block = target.register_ir.blocks[rhs_edge->to_block_id];
+    const bool has_read = std::any_of(rhs_block.instructions.begin(), rhs_block.instructions.end(),
+        [](const NativeRegisterInstruction& instruction) {
+            return instruction.origin_kind == NativeRegisterInstructionOriginKind::FlowRead ||
+                   !instruction.uses.empty();
+        });
+    const bool has_call = std::any_of(rhs_block.instructions.begin(), rhs_block.instructions.end(),
+        [](const NativeRegisterInstruction& instruction) { return instruction.is_call; });
+    require(has_read && has_call,
+        "B13A NativeRegisterIR must retain the machine-emitted RHS Read and Call operations");
+
+    const auto allocation = analyze_and_allocate_native_flow_function(target);
+    require(allocation.succeeded &&
+            allocation.liveness.blocks.size() == target.register_ir.blocks.size() &&
+            allocation.liveness.instructions[rhs_edge->to_block_id].size() == rhs_block.instructions.size(),
+        "B13A N112 must analyze and allocate the complete machine-emitted RHS block inventory");
+    const auto value_binding = std::find_if(target.bindings.begin(), target.bindings.end(),
+        [](const NativeRegisterFlowValueBinding& binding) { return binding.name == "value"; });
+    require(value_binding != target.bindings.end(), "B13A source parameter binding was not preserved");
+    const auto rhs_read = std::find_if(rhs_block.instructions.begin(), rhs_block.instructions.end(),
+        [](const NativeRegisterInstruction& instruction) {
+            return instruction.origin_kind == NativeRegisterInstructionOriginKind::FlowRead &&
+                   !instruction.uses.empty();
+        });
+    require(rhs_read != rhs_block.instructions.end(), "B13A RHS FlowRead instruction was not found");
+    const std::size_t rhs_read_index = static_cast<std::size_t>(rhs_read - rhs_block.instructions.begin());
+    const auto& live_before = allocation.liveness.instructions[rhs_edge->to_block_id][rhs_read_index].live_before;
+    require(std::find(live_before.begin(), live_before.end(), value_binding->native_value_id) != live_before.end(),
+        "B13A N112 must retain the unreachable-but-emitted RHS operand in instruction liveness");
+}
+
+void test_expression_edges_do_not_create_statement_branch_anchors() {
+    const auto parsed = parse_valid(
+        "module B13A; function Main(bool flag, int value) returns int { "
+        "if (flag && (value > 0)) { return 1; } else { return 0; } }");
+    const auto lowered = lower_control_flow_to_native_register_ir(parsed.unit);
+    require(lowered.succeeded && lowered.functions.size() == 1U,
+        "B13A expression-anchor fixture failed CFG lowering");
+    const auto compiled = compile_x64_coff_object(parsed.unit,
+        X64CodegenOptions{"b13a-expression-edges-not-statement-anchors", make_coff_x86_64_object_target()});
+    require(compiled.succeeded(), compiled.diagnostics.empty()
+        ? "B13A expression-anchor codegen failed without a diagnostic"
+        : "B13A expression-anchor codegen failed: " + compiled.diagnostics.front().code + " " +
+          compiled.diagnostics.front().message);
+    const auto& edges = lowered.functions.front().edges;
+    const std::size_t statement_anchor_count = static_cast<std::size_t>(std::count_if(
+        edges.begin(), edges.end(), [](const FlowEdge& edge) {
+            return edge.domain == FlowEdgeDomain::Statement && is_branch_anchor_edge(edge.kind);
+        }));
+    require(compiled.flow_branch_anchors.size() == statement_anchor_count,
+        "B13A ExpressionEdges leaked into the existing statement branch-anchor table");
+    for (const auto& anchor : compiled.flow_branch_anchors) {
+        const auto edge = std::find_if(edges.begin(), edges.end(),
+            [&](const FlowEdge& candidate) { return candidate.id == anchor.edge_id; });
+        require(edge != edges.end() && edge->domain == FlowEdgeDomain::Statement,
+            "B13A existing branch-anchor table contains an ExpressionEdge");
+    }
+}
+
 void test_constant_pruned_control_edges_are_not_fabricated() {
     const auto parsed = parse_valid(
         "module N109AConstant; public function Main() returns int { "
@@ -365,4 +494,10 @@ void run_n109a_cfg_edge_anchor_tests(int& passed, int& failed) {
         test_branch_anchor_offsets_follow_stack_probe_insertion, passed, failed);
     run_case("N109AH_constant_pruned_edges_not_fabricated",
         test_constant_pruned_control_edges_are_not_fabricated, passed, failed);
+    run_case("B13A08_bridge_preserves_expression_edge_identity",
+        test_bridge_preserves_expression_edge_identity_and_controls, passed, failed);
+    run_case("B13A09_unreachable_rhs_native_ir_is_retained",
+        test_unreachable_rhs_machine_operations_are_retained_in_native_ir, passed, failed);
+    run_case("B13A10_expression_edges_do_not_create_statement_anchors",
+        test_expression_edges_do_not_create_statement_branch_anchors, passed, failed);
 }

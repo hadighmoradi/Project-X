@@ -596,6 +596,74 @@ struct X64FlowBranchAnchor {
     std::uint32_t transfer_byte_count = 0U;
 };
 
+enum class X64ExpressionBranchEncoding : std::uint8_t {
+    Fallthrough,
+    ConditionalRel32,
+    UnconditionalRel32
+};
+
+// Expression-level machine branch evidence is deliberately separate from
+// X64FlowBranchAnchor: these edges are not N113 statement/loop edge-bundle
+// candidates. Offsets are function-local and rebased after every code insertion.
+struct X64ExpressionBranchAnchor {
+    std::size_t function_index = InvalidNativeFunctionIndex;
+    FlowExpressionId expression_id = InvalidFlowExpressionId;
+    FlowEdgeId edge_id = InvalidFlowEdgeId;
+    FlowBlockId from_block_id = InvalidFlowBlockId;
+    FlowBlockId to_block_id = InvalidFlowBlockId;
+    FlowEdgeKind edge_kind = FlowEdgeKind::Sequential;
+    X64ExpressionBranchEncoding encoding = X64ExpressionBranchEncoding::Fallthrough;
+    bool conditional_taken = false;
+    std::uint32_t instruction_offset = 0U;
+    std::uint32_t displacement_offset = InvalidNativeFlowOperationIndex;
+    std::uint32_t target_offset = 0U;
+    std::uint32_t source_block_begin_offset = 0U;
+    std::uint32_t source_block_end_offset = 0U;
+    std::uint32_t function_code_size = 0U;
+};
+
+// Production occupancy evidence is deliberately independent of branch anchors
+// and N113 Statement-edge schedules. A capture offset is the boundary BEFORE
+// bytes inserted at the same offset.
+enum class X64ExpressionEdgeCaptureSite : std::uint8_t {
+    AfterConditionalJccBeforeRhs,
+    AfterRhsNormalizeBeforeMergeJump,
+    AfterShortResultBeforeFallthrough
+};
+
+struct X64ExpressionEdgeOccupancyCapture {
+    std::size_t function_index = InvalidNativeFunctionIndex;
+    FlowExpressionId expression_id = InvalidFlowExpressionId;
+    FlowEdgeId edge_id = InvalidFlowEdgeId;
+    FlowBlockId from_block_id = InvalidFlowBlockId;
+    FlowBlockId to_block_id = InvalidFlowBlockId;
+    FlowEdgeKind edge_kind = FlowEdgeKind::Sequential;
+    X64ExpressionEdgeCaptureSite capture_site = X64ExpressionEdgeCaptureSite::AfterConditionalJccBeforeRhs;
+    std::uint32_t original_code_offset = 0U;
+    std::uint32_t code_offset = 0U;
+    std::vector<std::uint8_t> gp_stack_order;
+    std::vector<std::uint8_t> xmm_stack_order;
+    std::vector<std::uint8_t> gp_occupancy;
+    std::vector<std::uint8_t> xmm_occupancy;
+    std::uint32_t gp_depth = 0U;
+    std::uint32_t xmm_depth = 0U;
+    bool capture_complete = false;
+};
+
+struct X64ExpressionEdgeOccupancyOffsetRebaseResult {
+    bool succeeded = false;
+    std::uint32_t mapped_offset = 0U;
+    std::string diagnostic;
+};
+
+// Maps a pre-insertion boundary with BEFORE affinity. Adjustments must be
+// strictly increasing, nonzero, within source_code_size, and compose exactly
+// to final_code_size. Equality does not move the captured boundary.
+X64ExpressionEdgeOccupancyOffsetRebaseResult rebase_x64_expression_edge_occupancy_offset_before(
+    std::uint32_t source_offset, std::uint32_t source_code_size,
+    const std::vector<std::pair<std::uint32_t, std::uint32_t>>& adjustments,
+    std::uint32_t final_code_size);
+
 struct X64CodegenResult {
     NativeObjectEmissionResult native_object;
     std::vector<std::uint8_t> object_bytes;
@@ -605,9 +673,40 @@ struct X64CodegenResult {
     std::vector<X64FlowEmitterAnchor> flow_anchors;
     // Deterministic side-table for CFG control-flow edges; not serialized.
     std::vector<X64FlowBranchAnchor> flow_branch_anchors;
+    // Separate identity/offset proof for Expression Micro-CFG edges; never
+    // forwarded into N113's statement-edge transfer schedule.
+    std::vector<X64ExpressionBranchAnchor> flow_expression_branch_anchors;
+    // Independent per-Expression-FlowEdge occupancy snapshots from the three
+    // actual emission seams; offsets are final function-local BEFORE boundaries.
+    std::vector<X64ExpressionEdgeOccupancyCapture> flow_expression_edge_occupancy_captures;
 
     bool succeeded() const noexcept { return diagnostics.empty() && !object_bytes.empty(); }
 };
+
+struct X64ExpressionBranchAnchorValidationResult {
+    bool succeeded = false;
+    std::vector<std::string> diagnostics;
+};
+
+X64ExpressionBranchAnchorValidationResult validate_x64_expression_branch_anchors(
+    const std::vector<std::uint8_t>& function_code,
+    const std::vector<FlowExpressionControl>& expression_controls,
+    const std::vector<FlowEdge>& edges,
+    const std::vector<X64ExpressionBranchAnchor>& anchors,
+    std::size_t function_index);
+
+struct X64ExpressionEdgeOccupancyValidationResult {
+    bool succeeded = false;
+    std::vector<std::string> diagnostics;
+};
+
+X64ExpressionEdgeOccupancyValidationResult validate_x64_expression_edge_occupancy_captures(
+    const std::vector<std::uint8_t>& function_code,
+    const std::vector<FlowExpressionControl>& expression_controls,
+    const std::vector<FlowEdge>& edges,
+    const std::vector<X64ExpressionBranchAnchor>& branch_anchors,
+    const std::vector<X64ExpressionEdgeOccupancyCapture>& captures,
+    std::size_t function_index);
 
 // Win64 AMD64 backend for the supported scalar subset. It lowers integer,
 // boolean, float/double, local-pointer and direct-call expressions to x86-64
