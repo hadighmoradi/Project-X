@@ -102,19 +102,15 @@ The current public code is an experimental C++17 frontend with a custom x64 back
 
 This is a real but limited part of the larger plan. It is not yet the complete X language, runtime, standard library, IDE, or form designer.
 
-## Current status and next steps
+## Current compiler and next steps
 
-The latest recorded validation is **N114 v10.63 Full Regression (27 November 2026)** on a user-run local Windows/MSVC workspace.
+The public compiler is an experimental C++17 frontend with a custom x64 backend. The integrated Windows x64 path parses source into a `CompilationUnit`, emits AMD64 COFF object modules, and provides a deterministic link plan for the platform linker.
 
-- Declared test inventory: **175,976 / 175,976 passed** across 26 valid batches.
-- Windows build matrix: **9/9 targets** built with exit code 0 using serial NMake.
-- Global test IDs: 175,976 unique, zero failed IDs, zero internal or cross-batch duplicates.
-- Seven named Source SHA-256 guards passed.
-- G9 remains statement-edge-only; G10 remains do-not-rebuild; G11 remains 0/7.
-- `spill_call_crossing=true`; non-empty XMM remains open / blocked-not-proven-impossible.
-- Edge Bundle insertion and generated-PE end-to-end execution are not established by this evidence.
+Recent compiler work improves the representation of short-circuit logical expressions. The control-flow model now records the paths associated with `&&` and `||`, while keeping analysis reachability distinct from the paths required for native-code generation. The backend also tracks the native branch locations associated with those expression paths.
 
-**Source provenance limitation:** the runner did not record a source Git commit SHA. A read-only comparison found that the local tested source candidate is not identical to the public `main` tree reviewed for this record. The Full Regression result is therefore evidence for the local workspace and its declared inventory; it is not proof that the current public repository source is byte-for-byte the same. Complete public source-tree synchronization remains pending. See the [N114 Full Regression milestone](milestones/PROJECT_X_N114_V10_63_FULL_REGRESSION_WINDOWS_MSVC_2026-11-27.md) and [current engineering status](STATUS.md).
+The larger language and toolchain are still being developed. The runtime, standard library, complete language specification, IDE, visual form designer, Linux source-to-ELF path, x86-32 backend, and macOS output are not complete.
+
+See [current project status](STATUS.md), [architecture](ARCHITECTURE.md), and the [N114 expression control-flow milestone](milestones/N114_EXPRESSION_CONTROL_FLOW_2026-11-27.md).
 
 ## Help shape the language
 
