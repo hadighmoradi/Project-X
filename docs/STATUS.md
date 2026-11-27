@@ -21,15 +21,16 @@
 
 The result covers the full declared CMake inventory represented by the 26-batch regression plan. It does not claim coverage outside that inventory or certify every target, ABI/configuration, feature, or generated executable.
 
-## Important source synchronization boundary
+## Source synchronization and validation provenance
 
-The regression was run by the user in a local Windows/MSVC workspace. No source Git commit SHA was captured by the runner. The seven guards establish the identities of seven named files only; they do not establish identity of the complete source tree.
+The N114 v10.63 source snapshot is now present in public `main`. Source branch commit `6e802faf646a301f124026d5d0661796dd97080b` was integrated by [PR #7](https://github.com/hadighmoradi/Project-X/pull/7), producing merge commit `320c8d737aa2dc7dd9989026c6ffa3781248e77b`. The documentation checkpoint was integrated by [PR #6](https://github.com/hadighmoradi/Project-X/pull/6).
 
-The public `main` revision reviewed for this record was `a387301b5efd7251a9346f823e2396748557743a`. A read-only comparison found that this public tree and the local source archive/workspace candidate differ, including the absence of the N114 B13-B test file from that public tree and size differences in core source files. **This documentation update does not synchronize source code.** Do not treat this PASS as a claim that the current public `main` contains the exact source tested in Windows. Complete source-tree reconciliation and synchronization remain pending.
+The curated source candidate comprised 194 manifest entries: 193 existing tracked source paths and one new N114 B13-B test. The source PR changed exactly 15 paths (14 modified and one added). The source-bundle SHA-256, ZIP structure, all 194 file SHA-256 values, all 194 staged Git blob IDs, and the exact 15-path staged delta passed pre-commit guards. The source branch read-back matched the local commit SHA before PR merge.
 
-A dedicated source-sync branch has been reserved with a curated 194-file package. Read-only reconciliation found 179 header-only Git-blob matches, 14 substantive existing source changes, and one new N114 B13-B test. The bundle is not yet pushed, so the public repository is not yet synchronized. See the [source-tree audit](milestones/PROJECT_X_N114_SOURCE_TREE_RECONCILIATION_AUDIT_2026-11-27.md).
+**The historical Full Regression result is not yet attributable to the published source commit.** The run came from the user's local Windows/MSVC workspace, and the runner did not record a source commit SHA. Seven file hash guards do not establish complete source-tree identity. Rebuild and rerun the required Windows/MSVC validation against exact source commit `6e802faf646a301f124026d5d0661796dd97080b` before claiming that the 175,976-test PASS applies to this published revision.
 
-The detailed batch matrix, seven hashes, reconciliation rule, and limitations are recorded in the [N114 v10.63 Full Regression milestone](milestones/PROJECT_X_N114_V10_63_FULL_REGRESSION_WINDOWS_MSVC_2026-11-27.md). The prior [G62R18 validation record](G62R18_VALIDATION.md) remains historical and unchanged.
+The GitHub status query found no commit status checks and no associated workflow runs for the PR heads. No CI pass is claimed. See the [public main synchronization record](milestones/PROJECT_X_N114_PUBLIC_MAIN_SYNC_2026-11-27.md), [source-tree audit](milestones/PROJECT_X_N114_SOURCE_TREE_RECONCILIATION_AUDIT_2026-11-27.md), and [Full Regression milestone](milestones/PROJECT_X_N114_V10_63_FULL_REGRESSION_WINDOWS_MSVC_2026-11-27.md).
+
 
 ## N114 technical boundaries
 
