@@ -20,13 +20,13 @@
 | N113-G1–G33 | شواهد FunctionEmitter و edge/operand، ابزارهای diagnostics و gateهای آمادگی؛ درج عمومی edge همچنان غیرفعال است. |
 | N113-G57–G62R16 | تحلیل آمادگی و probe محدود، تطبیق سورس و ثبت snapshot چهارده‌فایلی. |
 | N113-G62R18 | اعتبارسنجی محدود N111/N112/N113 با MSVC: موفقیت ۲۵۲ از ۲۵۲ تست؛ بستن محدودهٔ Operation-level در Spill/Reload و انتقال کار CFG Edge Bundle به N114. |
-| N114 v10.63 | Full Regression روی Windows/MSVC: موفقیت ۱۷۵٬۹۷۶ از ۱۷۵٬۹۷۶، ۲۶ Batch از ۲۶ و Build موفق ۹ هدف از ۹؛ همگام‌سازی درخت عمومی Source همچنان باقی است. |
+| N114 v10.63 | Full Regression روی Windows/MSVC در Workspace محلی ثبت شد (۱۷۵٬۹۷۶ از ۱۷۵٬۹۷۶؛ ۲۶ از ۲۶ Batch؛ ۹ از ۹ Build). سپس Snapshot گزینش‌شدهٔ ۱۹۴ فایلی از طریق PR شمارهٔ ۷ در main عمومی ادغام شد؛ منشأ اجرای Regression روی کامیت دقیق همچنان در انتظار اعتبارسنجی است. |
 
 ## نقطهٔ ادامهٔ فعلی
 
-برای N114 v10.63، Full Regression روی Windows/MSVC برای موجودی تعریف‌شدهٔ ۱۷۵٬۹۷۶ تست با PASS ثبت شده است: هر ۲۶ Batch معتبر، بدون شکست و بدون شناسهٔ تکراری، و ماتریس Build با ۹ از ۹ هدف موفق.
+اکنون Snapshot سورس N114 v10.63 در `main` عمومی وجود دارد. کامیت شاخهٔ سورس `6e802faf646a301f124026d5d0661796dd97080b` از طریق PR شمارهٔ ۷ با Merge commit `320c8d737aa2dc7dd9989026c6ffa3781248e77b` ادغام شده است.
 
-این اعتبارسنجی از Workspace محلی کاربر به دست آمده است؛ Runner، SHA مربوط به commit سورس را ثبت نکرد. هنوز یکسان‌بودن کامل درخت سورس آزموده‌شده با `main` عمومی اثبات نشده است. این مستندات نتیجهٔ محلی را ثبت می‌کنند، اما سورس کامپایلر را همگام‌سازی نمی‌کنند. تطبیق کامل درخت Source عمومی، مرز انتشار بعدی است. جزئیات در [رکورد Full Regression مربوط به N114](milestones/PROJECT_X_N114_V10_63_FULL_REGRESSION_WINDOWS_MSVC_2026-11-27_FA.md) آمده است.
+PASS تاریخی Full Regression همچنان مدرک اجرای Workspace محلی است: Runner، SHA مربوط به commit سورس را ثبت نکرد و هفت Source Guard نام‌برده، هویت کل درخت را ثابت نمی‌کنند. بنابراین کامیت دقیق سورس منتشرشده باید Build و Regression مستقل Windows/MSVC را دریافت کند تا آن PASS به آن قابل انتساب باشد. جزئیات در [رکورد همگام‌سازی main عمومی](milestones/PROJECT_X_N114_PUBLIC_MAIN_SYNC_2026-11-27_FA.md) و [رکورد Full Regression](milestones/PROJECT_X_N114_V10_63_FULL_REGRESSION_WINDOWS_MSVC_2026-11-27_FA.md) آمده است.
 
 Gateهای فنی N114 همچنان صریح‌اند: G9 فقط Statement-edge، مقدار G10 برابر DO_NOT_REBUILD، مقدار G11 برابر ۰ از ۷، مقدار `spill_call_crossing=true` و وضعیت XMM non-empty برابر open / blocked-not-proven-impossible است. ادعایی دربارهٔ Edge Bundle insertion یا اجرای End-to-End فایل PE تولیدشده مطرح نمی‌شود.
 
