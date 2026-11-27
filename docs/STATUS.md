@@ -27,6 +27,8 @@ The regression was run by the user in a local Windows/MSVC workspace. No source 
 
 The public `main` revision reviewed for this record was `a387301b5efd7251a9346f823e2396748557743a`. A read-only comparison found that this public tree and the local source archive/workspace candidate differ, including the absence of the N114 B13-B test file from that public tree and size differences in core source files. **This documentation update does not synchronize source code.** Do not treat this PASS as a claim that the current public `main` contains the exact source tested in Windows. Complete source-tree reconciliation and synchronization remain pending.
 
+A dedicated source-sync branch has been reserved with a curated 194-file package. Read-only reconciliation found 179 header-only Git-blob matches, 14 substantive existing source changes, and one new N114 B13-B test. The bundle is not yet pushed, so the public repository is not yet synchronized. See the [source-tree audit](milestones/PROJECT_X_N114_SOURCE_TREE_RECONCILIATION_AUDIT_2026-11-27.md).
+
 The detailed batch matrix, seven hashes, reconciliation rule, and limitations are recorded in the [N114 v10.63 Full Regression milestone](milestones/PROJECT_X_N114_V10_63_FULL_REGRESSION_WINDOWS_MSVC_2026-11-27.md). The prior [G62R18 validation record](G62R18_VALIDATION.md) remains historical and unchanged.
 
 ## N114 technical boundaries

@@ -57,6 +57,8 @@ I call the project **X** for now; its final name is still open. The repository i
 
 This is a user-run Windows/MSVC result for the local validation workspace. **The tested workspace has not yet been proven byte-for-byte identical to the public `main` branch.** The runner did not record a source commit SHA, and a read-only check found source-tree differences from the public revision. This record therefore must not be read as proof that the current public `main` already contains the validated N114 source. Complete source synchronization remains a separate, pending step.
 
+The read-only source-tree audit found 193 existing public source paths, all present in the candidate, plus one new N114 B13-B test. 179 existing files match public Git blob identities after SPDX restoration; 14 existing files contain substantive code changes. A 194-file source-only bundle is prepared, and a dedicated source branch is reserved; the push and commit-level validation are still pending. See the [source-tree reconciliation audit](docs/milestones/PROJECT_X_N114_SOURCE_TREE_RECONCILIATION_AUDIT_2026-11-27.md).
+
 See the [Full Regression milestone record](docs/milestones/PROJECT_X_N114_V10_63_FULL_REGRESSION_WINDOWS_MSVC_2026-11-27.md) and [engineering status](docs/STATUS.md). Historical G62R18 evidence remains available and has not been overwritten.
 
 
