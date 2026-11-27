@@ -23,19 +23,16 @@
 
 این نتیجه تمام موجودی تعریف‌شدهٔ CMake را که در برنامهٔ ۲۶-Batch آمده است پوشش می‌دهد. این نتیجه ادعای پوشش موارد خارج از آن موجودی یا گواهی همهٔ targetها، حالت‌های ABI/configuration، قابلیت‌ها یا فایل‌های اجرایی تولیدشده نیست.
 
-## مرز مهم همگام‌سازی سورس
+## همگام‌سازی Source و منشأ اعتبارسنجی
 
-آزمون Regression توسط کاربر در یک Workspace محلی Windows/MSVC اجرا شده است. Runner، SHA مربوط به commit سورس را ثبت نکرده است. هفت Guard فقط هویت هفت فایل نام‌برده را ثابت می‌کنند و هویت کل درخت Source را اثبات نمی‌کنند.
+Snapshot سورس N114 v10.63 اکنون در `main` عمومی قرار دارد. کامیت شاخهٔ سورس `6e802faf646a301f124026d5d0661796dd97080b` از طریق [PR شمارهٔ ۷](https://github.com/hadighmoradi/Project-X/pull/7) ادغام شد و Merge commit آن `320c8d737aa2dc7dd9989026c6ffa3781248e77b` است. بخش مستندات نیز از طریق [PR شمارهٔ ۶](https://github.com/hadighmoradi/Project-X/pull/6) ادغام شد.
 
-revision شاخهٔ عمومی `main` که برای این رکورد بررسی شد:
+کاندید Source شامل ۱۹۴ ورودی manifest بود: ۱۹۳ مسیر Source موجود و یک تست جدید N114 B13-B. PR سورس دقیقاً ۱۵ مسیر را تغییر داد (۱۴ اصلاح و یک فایل جدید). SHA-256 بسته، ساختار ZIP، SHA-256 هر ۱۹۴ فایل، Git blob ID هر ۱۹۴ فایل Staged و Diff دقیق ۱۵ مسیره، پیش از Commit از Guardها عبور کردند. پیش از Merge نیز SHA شاخهٔ دوردست با Commit محلی یکسان بود.
 
-`a387301b5efd7251a9346f823e2396748557743a`
+**نتیجهٔ Full Regression تاریخی هنوز به کامیت سورس منتشرشده قابل انتساب نیست.** آزمون در Workspace محلی Windows/MSVC کاربر اجرا شد و Runner، SHA مربوط به Git commit سورس را ثبت نکرد. هفت Hash Guard فایل، هویت کامل درخت سورس را ثابت نمی‌کنند. پیش از ادعای اعمال PASS شامل ۱۷۵٬۹۷۶ تست به این Revision عمومی، Build و اعتبارسنجی لازم Windows/MSVC باید روی کامیت دقیق `6e802faf646a301f124026d5d0661796dd97080b` دوباره اجرا شود.
 
-بررسی فقط‌خواندنی نشان داد درخت عمومی با آرشیو/Workspace محلی یکسان نیست؛ از جمله فایل تست N114 B13-B در آن درخت عمومی وجود ندارد و اندازهٔ بعضی فایل‌های اصلی سورس متفاوت است. **این به‌روزرسانی مستندات، سورس را همگام‌سازی نمی‌کند.** این PASS نباید به‌عنوان ادعای وجود همان سورس آزموده‌شده در `main` عمومی تفسیر شود. تطبیق و همگام‌سازی کامل درخت Source همچنان باقی است.
+پرس‌وجوی GitHub Status هیچ Commit Status Check و هیچ Workflow Run مرتبط با PRها برنگرداند؛ بنابراین ادعای CI موفق مطرح نمی‌شود. جزئیات در [رکورد همگام‌سازی main عمومی](milestones/PROJECT_X_N114_PUBLIC_MAIN_SYNC_2026-11-27_FA.md)، [ممیزی درخت Source](milestones/PROJECT_X_N114_SOURCE_TREE_RECONCILIATION_AUDIT_2026-11-27_FA.md) و [رکورد Full Regression](milestones/PROJECT_X_N114_V10_63_FULL_REGRESSION_WINDOWS_MSVC_2026-11-27_FA.md) آمده است.
 
-یک Branch مستقل برای Source Sync رزرو شده و بستهٔ curated شامل ۱۹۴ فایل آماده است. ممیزی فقط‌خواندنی ۱۷۹ فایل با تطبیق Git blob پس از اصلاح Header، ۱۴ فایل دارای تغییر محتوایی و یک تست جدید N114 B13-B را نشان داد. بسته هنوز Push نشده؛ بنابراین مخزن عمومی هنوز همگام نیست. جزئیات در [ممیزی درخت Source](milestones/PROJECT_X_N114_SOURCE_TREE_RECONCILIATION_AUDIT_2026-11-27_FA.md) آمده است.
-
-ماتریس Batchها، هفت Hash، قاعدهٔ تطبیق و محدودیت‌ها در [رکورد milestone مربوط به N114 v10.63](milestones/PROJECT_X_N114_V10_63_FULL_REGRESSION_WINDOWS_MSVC_2026-11-27_FA.md) ثبت شده‌اند. [رکورد تاریخی G62R18](G62R18_VALIDATION_FA.md) بدون تغییر حفظ شده است.
 
 ## مرزهای فنی N114
 

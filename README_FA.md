@@ -55,12 +55,11 @@
 | ماتریس Build ویندوز | **۹ از ۹ هدف، کد خروجی صفر** |
 | Source Hash Guard | **۷ از ۷، بدون خطا** |
 
-این نتیجه توسط کاربر در محیط Windows/MSVC و روی Workspace محلی اعتبارسنجی اجرا شده است. **هنوز تطبیق byte-for-byte این Workspace با شاخهٔ عمومی `main` اثبات نشده است.** Runner، SHA مربوط به commit سورس را ثبت نکرده و بررسی فقط‌خواندنی تفاوت‌هایی را میان درخت Source محلی و revision عمومی نشان داده است. بنابراین این رکورد اثبات نمی‌کند که سورس فعلی `main` عمومی همان N114 اعتبارسنجی‌شده را در خود دارد. همگام‌سازی کامل Source همچنان مرحله‌ای مستقل و در انتظار است.
+Snapshot سورس N114 v10.63 اکنون در شاخهٔ عمومی `main` ادغام شده است. کامیت سورس `6e802faf646a301f124026d5d0661796dd97080b` از طریق [PR شمارهٔ ۷](https://github.com/hadighmoradi/Project-X/pull/7) ادغام شد؛ Merge commit سورس برابر `320c8d737aa2dc7dd9989026c6ffa3781248e77b` است. بستهٔ curated شامل ۱۹۴ فایل بود: تمام ۱۹۳ مسیر Source قبلی به‌علاوهٔ تست جدید N114 B13-B. PR سورس ۱۵ مسیر را تغییر داد (۱۴ فایل موجود و یک فایل جدید).
 
-ممیزی فقط‌خواندنی Source نشان داد ۱۹۳ مسیر موجود در مخزن عمومی همگی در کاندید حضور دارند و یک تست جدید N114 B13-B نیز افزوده شده است. محتوای ۱۷۹ فایل پس از بازگرداندن Headerهای SPDX با Git blob عمومی یکسان است؛ ۱۴ فایل موجود تغییر محتوایی واقعی دارند. بستهٔ Source-only شامل ۱۹۴ فایل آماده است و Branch مستقل آن رزرو شده؛ اما Push و Validation متصل به Commit هنوز انجام نشده‌اند. جزئیات در [ممیزی تطبیق درخت Source](docs/milestones/PROJECT_X_N114_SOURCE_TREE_RECONCILIATION_AUDIT_2026-11-27_FA.md) آمده است.
+نتیجهٔ Full Regression همچنان مدرک اجرای کاربر روی Workspace محلی Windows/MSVC است. Runner، SHA مربوط به commit سورس را ثبت نکرد؛ بنابراین این PASS تاریخی **به‌عنوان اجرای آزمون روی کامیت سورس** `6e802faf646a301f124026d5d0661796dd97080b` یا Merge commit آن معرفی نمی‌شود. اعتبارسنجی روی Revision دقیق منتشرشده همچنان باقی است؛ هفت Hash Guard نام‌برده، منشأ تست کل درخت را اثبات نمی‌کنند.
 
-به [رکورد Full Regression](docs/milestones/PROJECT_X_N114_V10_63_FULL_REGRESSION_WINDOWS_MSVC_2026-11-27_FA.md) و [وضعیت مهندسی](docs/STATUS_FA.md) مراجعه کنید. سوابق تاریخی G62R18 حفظ شده‌اند و بازنویسی نشده‌اند.
-
+برای جزئیات به [ممیزی تطبیق و انتشار Source](docs/milestones/PROJECT_X_N114_SOURCE_TREE_RECONCILIATION_AUDIT_2026-11-27_FA.md)، [رکورد همگام‌سازی main عمومی](docs/milestones/PROJECT_X_N114_PUBLIC_MAIN_SYNC_2026-11-27_FA.md) و [رکورد Full Regression](docs/milestones/PROJECT_X_N114_V10_63_FULL_REGRESSION_WINDOWS_MSVC_2026-11-27_FA.md) مراجعه کنید. سوابق تاریخی G62R18 حفظ شده‌اند و بازنویسی نشده‌اند.
 
 ## معماری
 

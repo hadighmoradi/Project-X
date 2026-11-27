@@ -69,3 +69,27 @@ EVIDENCE_PROVENANCE=REQUIRED
 SOURCE_TREE_IDENTITY=DO_NOT_ASSUME
 PUBLIC_SOURCE_SYNC=NOT_ESTABLISHED
 ```
+
+
+## Publication update — 27 November 2026
+
+The repository owner explicitly authorized the merge of the two named PRs in the current conversation. They were merged through the PR workflow, not by direct writes to `main`:
+
+- PR #6 documentation/site checkpoint — merged; merge commit `0bf01d27afb0cd7df35b1506096a0524db15654d`.
+- PR #7 N114 v10.63 source snapshot — merged; source commit `6e802faf646a301f124026d5d0661796dd97080b`, merge commit `320c8d737aa2dc7dd9989026c6ffa3781248e77b`.
+- Public `main` now contains the 15-path source delta from the curated 194-file candidate.
+- Exact-commit Windows/MSVC validation remains pending because the historical runner recorded no source commit SHA. The queried PR heads had no GitHub status checks or workflow runs. No release/tag or release-certification claim was made.
+
+The default remains Branch → Commit → Push → Pull Request. Merge requires specific, separate user approval; the approval recorded here was limited to PRs #6 and #7.
+
+```text
+PUBLIC_SOURCE_SYNC=INTEGRATED_IN_MAIN
+SOURCE_COMMIT=6e802faf646a301f124026d5d0661796dd97080b
+SOURCE_MERGE_COMMIT=320c8d737aa2dc7dd9989026c6ffa3781248e77b
+DOCS_MERGE_COMMIT=0bf01d27afb0cd7df35b1506096a0524db15654d
+PR6=MERGED
+PR7=MERGED
+EXACT_SOURCE_COMMIT_REGRESSION=PENDING_PROVENANCE_AND_RERUN
+GITHUB_CI_CHECKS=NONE_RETURNED
+RELEASE_CERTIFICATION=NOT_CLAIMED
+```

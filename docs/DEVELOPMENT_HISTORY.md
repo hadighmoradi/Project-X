@@ -20,13 +20,13 @@ This is a public summary of the milestones recorded in the project archives. It 
 | N113-G1–G33 | FunctionEmitter edge/operand evidence, diagnostics, and readiness gates. The recorded gates keep general edge insertion disabled. |
 | N113-G57–G62R16 | Readiness and bounded probe analysis, source cross-checks, and a 14-file source snapshot. |
 | N113-G62R18 | Scoped MSVC validation of N111/N112/N113: 252/252 passed; operation-level spill/reload scope closed; CFG Edge Bundle work deferred to N114. |
-| N114 v10.63 | Windows/MSVC Full Regression: 175,976/175,976, 26/26 batches and 9/9 builds; public source-tree synchronization remains pending. |
+| N114 v10.63 | Windows/MSVC Full Regression recorded locally (175,976/175,976; 26/26 batches; 9/9 builds). The 194-file curated source snapshot was subsequently merged into public main through PR #7; exact-commit regression provenance remains pending. |
 
 ## Current continuation point
 
-N114 v10.63 has a recorded Windows/MSVC Full Regression PASS for the declared 175,976-test inventory: 26/26 batches, zero failures, zero duplicate IDs, and a 9/9 target build matrix. The seven named source guards matched their final SHA-256 values.
+Public `main` now contains the N114 v10.63 source snapshot. The source branch commit is `6e802faf646a301f124026d5d0661796dd97080b`, merged through PR #7 as `320c8d737aa2dc7dd9989026c6ffa3781248e77b`.
 
-This validation came from the user's local workspace; the runner did not record a source commit SHA. The local tested source tree has not yet been proven identical to public `main`. The documentation records the local result but does not synchronize compiler source. Complete public source-tree reconciliation is the next publication boundary. See the [N114 Full Regression milestone](milestones/PROJECT_X_N114_V10_63_FULL_REGRESSION_WINDOWS_MSVC_2026-11-27.md).
+The historical Full Regression PASS remains local-workspace evidence only: the runner did not record a source commit SHA, and the seven named source guards do not prove whole-tree identity. The exact published source commit therefore still needs its own Windows/MSVC build and regression validation before that PASS can be attributed to it. See the [public main synchronization milestone](milestones/PROJECT_X_N114_PUBLIC_MAIN_SYNC_2026-11-27.md) and [Full Regression milestone](milestones/PROJECT_X_N114_V10_63_FULL_REGRESSION_WINDOWS_MSVC_2026-11-27.md).
 
 N114 technical gates remain explicit: G9 is statement-edge-only, G10 is do-not-rebuild, G11 is 0/7, `spill_call_crossing=true`, and non-empty XMM remains open / blocked-not-proven-impossible. No Edge Bundle insertion or generated-PE end-to-end validation is claimed.
 
