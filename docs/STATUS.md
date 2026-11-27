@@ -3,34 +3,42 @@
 
 # Current engineering status
 
-**Validation record:** G62R18 · 24 November 2026  
-**Source/workspace baseline:** N113-G62R16  
-**Result:** PASS — scoped N111/N112/N113 validation
+**Latest validation record:** N114 v10.63 · 27 November 2026  
+**Result:** `PASS_FULL_REGRESSION` for the declared 175,976-test inventory  
+**Evidence environment:** User-run Windows x64 · MSVC · NMake serial
 
-G62R18 built and ran the three focused MSVC test targets in the local XForm_test workspace:
+## Full Regression result
 
-| Suite / target | Executed | Passed | Failed | Skipped |
-|---|---:|---:|---:|---:|
-| N111 / xfrontend_tests_n111 | 23 | 23 | 0 | 0 |
-| N112 / xfrontend_tests_n112 | 25 | 25 | 0 | 0 |
-| N113 / xfrontend_tests_n113 | 204 | 204 | 0 | 0 |
-| **Total** | **252** | **252** | **0** | **0** |
+| Measure | Result |
+|---|---:|
+| Declared inventory / passed | **175,976 / 175,976** |
+| Valid batches | **26 / 26** |
+| Failed tests | **0** |
+| Globally unique test IDs | **175,976** |
+| Internal / cross-batch duplicates | **0 / 0** |
+| Windows build matrix | **9 / 9 targets, exit code 0** |
+| Source hash guards | **7 / 7, zero failures** |
 
-Build environment: Windows x64, MSVC 19.51.36248, CMake 4.4.4, NMake Makefiles, Debug with /Z7. CMake configure and build both exited with code 0. Each suite reported all discovered cases executed, no duplicate, missing, or unexpected test IDs, and a successful JSON/TXT report comparison.
+The result covers the full declared CMake inventory represented by the 26-batch regression plan. It does not claim coverage outside that inventory or certify every target, ABI/configuration, feature, or generated executable.
 
-The runner checked 16 named source/build/test files before and after execution. All 16 matched their expected SHA-256 values before the run and remained identical after it. This is a bounded integrity check of those named files, not a hash claim about every file in the repository.
+## Important source synchronization boundary
 
-**N113 operation-level scope:** the G62R18 evidence supports closing the operation-level spill/reload validation scope. It does not establish general CFG edge insertion readiness. G11 remains 0/7; edge-bundle insertion was not performed. CFG Edge Bundle and broader CFG integration are carried forward to N114.
+The regression was run by the user in a local Windows/MSVC workspace. No source Git commit SHA was captured by the runner. The seven guards establish the identities of seven named files only; they do not establish identity of the complete source tree.
 
-**Not established by G62R18:** full regression; the remaining project-wide test inventory; end-to-end execution of a generated PE; general edge-bundle insertion; or product-wide readiness.
+The public `main` revision reviewed for this record was `a387301b5efd7251a9346f823e2396748557743a`. A read-only comparison found that this public tree and the local source archive/workspace candidate differ, including the absence of the N114 B13-B test file from that public tree and size differences in core source files. **This documentation update does not synchronize source code.** Do not treat this PASS as a claim that the current public `main` contains the exact source tested in Windows. Complete source-tree reconciliation and synchronization remain pending.
 
-The test reports record a project inventory total of 175,937. That is inventory metadata, not the number executed in this run. G62R18 executed only the 252 cases in the three named suites.
+The detailed batch matrix, seven hashes, reconciliation rule, and limitations are recorded in the [N114 v10.63 Full Regression milestone](milestones/PROJECT_X_N114_V10_63_FULL_REGRESSION_WINDOWS_MSVC_2026-11-27.md). The prior [G62R18 validation record](G62R18_VALIDATION.md) remains historical and unchanged.
 
-The evidence was produced in the local XForm_test workspace. The runner performed no Git operations and did not capture a source commit SHA. Accordingly, this record does not claim that the full public repository tree at a particular Git commit was byte-identical to the tested local workspace. The 16-file SHA-256 manifest is included in the detailed validation record.
+## N114 technical boundaries
 
-The text summary contains a formatting defect in its three per-suite display rows (literal format placeholders). It does not alter the machine-readable summary or test results; the JSON reports, TXT reports, per-suite comparison files, and console logs are retained as the authoritative evidence.
-
-See [G62R18 validation record](G62R18_VALIDATION.md) and [Persian status](STATUS_FA.md). The prior G62R16 snapshot and bounded G62R13 probe remain historical records; they have not been overwritten.
+- `G9=STATEMENT_EDGE_ONLY`.
+- `G10=DO_NOT_REBUILD`.
+- `G11=0/7`.
+- `spill_call_crossing=true`.
+- XMM non-empty remains `OPEN/BLOCKED_NOT_PROVEN_IMPOSSIBLE`.
+- No Edge Bundle insertion, SpillSlot reservation, unwind/relocation changes, or language/type/cast/conversion changes are established by this regression record.
+- End-to-end execution of a generated PE was not part of this validation.
+- This PASS is not a release certification.
 
 ## Target platform roadmap
 

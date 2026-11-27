@@ -54,7 +54,7 @@ footer{border-top:1px solid var(--line);padding:22px 0 35px;color:var(--muted);f
 <main class="wrap">
 <section class="hero">
 <div><div class="eyebrow">A language taking shape</div><h1>Simple to write.<br><span>Native by design.</span></h1><p class="lead">I want X to feel comfortable to write, run as a native program, and create executables that stay small. Here is the direction, the ideas behind it, and where the project stands today.</p><div class="pills"><span class="pill">Design goals</span><span class="pill">Current compiler</span><span class="pill">What comes next</span></div></div>
-<aside class="summary"><div class="eyebrow">The project today</div><strong>X <small>working name</small></strong><div>Experimental native compiler</div><div>Current integrated target: Windows x64</div><div>Latest checkpoint: N113-G62R16</div></aside>
+<aside class="summary"><div class="eyebrow">The project today</div><strong>X <small>working name</small></strong><div>Experimental native compiler</div><div>Current integrated target: Windows x64</div><div>Latest validation: N114 v10.63 · local workspace</div></aside>
 </section>
 <section id="goals"><div class="kicker">01 · What matters</div><h2>What I want X to be good at</h2><p class="section-intro">The goal is to make everyday programming easy without giving up native speed, small output, or control over system resources.</p><div class="grid">
 <article class="card"><div class="number">01</div><h3>Easy to read</h3><p>Code should be clear and familiar. Simple jobs should take only a few straightforward lines.</p></article>
@@ -130,20 +130,7 @@ Windows linker
 PE32+ executable</pre></div>
 <p class="note">This is one part of the larger plan, not the finished language, runtime, standard library, IDE, or form designer.</p>
 </section>
-<section id="status"><div class="kicker">06 · Progress</div><h2>Where the project stands</h2><p class="section-intro">Latest public compiler checkpoint: <strong>N113-G62R16 · 23 November 2026</strong>.</p>
-<div class="grid">
-<article class="card"><h3>Source snapshot</h3><p>The 14-file G62R16 snapshot matches the corresponding workspace files.</p></article>
-<article class="card"><h3>Limited test</h3><p>G62R13 passed a controlled MSVC G2-on test: 56 actions, 66 machine moves, and 474 transfer bytes.</p></article>
-<article class="card"><h3>Still to do</h3><p>General edge insertion is not ready (G11 is 0/7). Full regression was not run for this checkpoint.</p></article>
-</div>
-<p>Next step: G62R17 — check expression-temporary liveness and register ownership before designing optional routing. This work has not started yet.</p>
-<table><thead><tr><th>Target</th><th>Current state</th></tr></thead><tbody>
-<tr><td>Windows x64</td><td>The integrated compiler path creates AMD64 COFF objects and a link plan; the Windows linker produces PE32+.</td></tr>
-<tr><td>Linux x64</td><td>Some ELF64 parts and limited LLD tests exist, but a complete source-to-ELF path is not established.</td></tr>
-<tr><td>x86-32</td><td>Planned; not implemented in the current backend.</td></tr>
-<tr><td>macOS</td><td>A future goal; Mach-O output and macOS validation are not ready.</td></tr>
-</tbody></table>
-</section>
+<section id="status"><div class="kicker">06 · Progress</div><h2>Where the project stands</h2><p class="section-intro">Latest recorded validation: <strong>N114 v10.63 · 27 November 2026</strong>.</p><div class="grid"><article class="card"><h3>Full Regression</h3><p>175,976 / 175,976 declared tests passed across 26 valid batches.</p></article><article class="card"><h3>Windows build</h3><p>All nine MSVC build-matrix targets exited 0; NMake was serial.</p></article><article class="card"><h3>Technical gates</h3><p>G9 remains statement-edge-only, G10 do-not-rebuild, and G11 is 0/7. Edge Bundle insertion is not claimed.</p></article></div><p><strong>Source provenance:</strong> this result belongs to the user's local workspace. The runner did not capture a source commit SHA, and the full tested tree has not been proven identical to public main. Complete public source synchronization remains pending.</p><p><a href="docs/milestones/PROJECT_X_N114_V10_63_FULL_REGRESSION_WINDOWS_MSVC_2026-11-27.md">Read the N114 Full Regression milestone and its limitations.</a></p><table><thead><tr><th>Target</th><th>Current state</th></tr></thead><tbody><tr><td>Windows x64</td><td>The integrated compiler path creates AMD64 COFF objects and a link plan; the Windows linker produces PE32+.</td></tr><tr><td>Linux x64</td><td>Some ELF64 parts and limited LLD tests exist, but a complete source-to-ELF path is not established.</td></tr><tr><td>x86-32</td><td>Planned; not implemented in the current backend.</td></tr><tr><td>macOS</td><td>A future goal; Mach-O output and macOS validation are not ready.</td></tr></tbody></table></section>
 <section id="community"><div class="kicker">07 · Join in</div><h2>What would you like from X?</h2><p class="section-intro">Tell us what you want to build, which features matter most, and what you would change in the languages you already use. Your ideas will help guide the next design decisions.</p><div class="actions"><a class="button" href="https://github.com/hadighmoradi/Project-X/discussions">Join the discussion</a><a class="button secondary" href="docs/DEVELOPMENT_WORKFLOW.md">How the project is developed</a></div></section>
 
 <section class="fa" id="fa" lang="fa">
@@ -207,19 +194,7 @@ Windows linker
     v
 PE32+ executable</pre></div>
 <p class="note">این فقط بخشی از مسیر بزرگ‌تر پروژه است؛ زبان کامل، Runtime، کتابخانهٔ استاندارد، IDE و Form Designer هنوز آماده نیستند.</p>
-<div class="kicker" style="margin-top:30px">۰۶ · پیشرفت پروژه</div><h2>الان کجا هستیم؟</h2><p class="section-intro">آخرین checkpoint عمومی کامپایلر: <strong>N113-G62R16 · ۲۳ نوامبر ۲۰۲۶</strong>.</p>
-<div class="grid">
-<article class="card"><h3>سلامت سورس</h3><p>هر ۱۴ فایل snapshot G62R16 با فایل‌های متناظر در Workspace تطبیق دارند.</p></article>
-<article class="card"><h3>آزمایش محدود</h3><p>G62R13 با MSVC و G2-on موفق بوده است: ۵۶ action، ۶۶ machine move و ۴۷۴ بایت انتقال.</p></article>
-<article class="card"><h3>کارهای باقی‌مانده</h3><p>درج عمومی edge آماده نیست (G11 برابر ۰ از ۷). Full Regression هم اجرا نشده است.</p></article>
-</div>
-<p>گام بعدی G62R17 است: بررسی liveness موقت‌های expression و مالکیت register پیش از طراحی routing اختیاری. این کار هنوز شروع نشده است.</p>
-<table><thead><tr><th>پلتفرم</th><th>وضعیت فعلی</th></tr></thead><tbody>
-<tr><td>Windows x64</td><td>مسیر یکپارچه ماژول‌های AMD64 COFF و link plan می‌سازد؛ linker ویندوز PE32+ تولید می‌کند.</td></tr>
-<tr><td>Linux x64</td><td>بعضی اجزای ELF64 و آزمون‌های محدود LLD وجود دارند، اما مسیر کامل سورس تا ELF ثابت نشده است.</td></tr>
-<tr><td>x86-32</td><td>در برنامهٔ آینده است؛ در backend فعلی پیاده‌سازی نشده.</td></tr>
-<tr><td>macOS</td><td>هدف آینده است؛ خروجی Mach-O و آزمون روی macOS آماده نیست.</td></tr>
-</tbody></table>
+<div class="kicker" style="margin-top:30px">۰۶ · پیشرفت پروژه</div><h2>الان کجا هستیم؟</h2><p class="section-intro">جدیدترین اعتبارسنجی ثبت‌شده: <strong>N114 v10.63 · ۲۷ نوامبر ۲۰۲۶</strong>.</p><div class="grid"><article class="card"><h3>Full Regression</h3><p>۱۷۵٬۹۷۶ از ۱۷۵٬۹۷۶ تست موجودی تعریف‌شده در ۲۶ Batch معتبر موفق شدند.</p></article><article class="card"><h3>Build ویندوز</h3><p>هر ۹ هدف ماتریس Build با MSVC و NMake سریال کد خروجی صفر داشتند.</p></article><article class="card"><h3>Gateهای فنی</h3><p>G9 همچنان Statement-edge-only، مقدار G10 برابر do-not-rebuild و G11 برابر ۰ از ۷ است. Edge Bundle insertion ادعا نمی‌شود.</p></article></div><p><strong>منشأ سورس:</strong> نتیجه مربوط به Workspace محلی کاربر است. Runner، SHA مربوط به commit سورس را ثبت نکرده و یکسانی کامل درخت آزموده‌شده با main عمومی اثبات نشده است. همگام‌سازی کامل سورس عمومی همچنان باقی است.</p><p><a href="docs/milestones/PROJECT_X_N114_V10_63_FULL_REGRESSION_WINDOWS_MSVC_2026-11-27_FA.md">رکورد Full Regression مربوط به N114 و محدودیت‌های آن</a></p><table><thead><tr><th>پلتفرم</th><th>وضعیت فعلی</th></tr></thead><tbody><tr><td>Windows x64</td><td>مسیر یکپارچه ماژول‌های AMD64 COFF و link plan می‌سازد؛ linker ویندوز PE32+ تولید می‌کند.</td></tr><tr><td>Linux x64</td><td>بعضی اجزای ELF64 و آزمون‌های محدود LLD وجود دارند، اما مسیر کامل سورس تا ELF ثابت نشده است.</td></tr><tr><td>x86-32</td><td>در برنامهٔ آینده است؛ در backend فعلی پیاده‌سازی نشده.</td></tr><tr><td>macOS</td><td>هدف آینده است؛ خروجی Mach-O و آزمون روی macOS آماده نیست.</td></tr></tbody></table>
 <div class="kicker" style="margin-top:30px">۰۷ · مشارکت</div><h2>شما از X چه انتظاری دارید؟</h2><p class="section-intro">بگویید با X دوست دارید چه برنامه‌ای بسازید، کدام قابلیت‌ها برایتان مهم‌ترند و در زبان‌هایی که استفاده می‌کنید چه چیزهایی را بهتر می‌کردید.</p><div class="actions"><a class="button" href="https://github.com/hadighmoradi/Project-X/discussions">ورود به گفت‌وگو</a><a class="button secondary" href="docs/DEVELOPMENT_WORKFLOW_FA.md">روش توسعه و ثبت نتیجه‌ها</a><a class="button secondary" href="index.html#fa">صفحهٔ اصلی</a></div>
 </section>
 </main>

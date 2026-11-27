@@ -20,12 +20,15 @@
 | N113-G1–G33 | شواهد FunctionEmitter و edge/operand، ابزارهای diagnostics و gateهای آمادگی؛ درج عمومی edge همچنان غیرفعال است. |
 | N113-G57–G62R16 | تحلیل آمادگی و probe محدود، تطبیق سورس و ثبت snapshot چهارده‌فایلی. |
 | N113-G62R18 | اعتبارسنجی محدود N111/N112/N113 با MSVC: موفقیت ۲۵۲ از ۲۵۲ تست؛ بستن محدودهٔ Operation-level در Spill/Reload و انتقال کار CFG Edge Bundle به N114. |
+| N114 v10.63 | Full Regression روی Windows/MSVC: موفقیت ۱۷۵٬۹۷۶ از ۱۷۵٬۹۷۶، ۲۶ Batch از ۲۶ و Build موفق ۹ هدف از ۹؛ همگام‌سازی درخت عمومی Source همچنان باقی است. |
 
 ## نقطهٔ ادامهٔ فعلی
 
-جدیدترین رکورد اعتبارسنجی G62R18 در ۲۴ نوامبر ۲۰۲۶ و روی مبنای Workspace محلی N113-G62R16 اجرا شد. سه مجموعهٔ متمرکز N111، N112 و N113 با MSVC 19.51.36248 و CMake 4.4.4 در مجموع ۲۵۲ از ۲۵۲ تست را با موفقیت گذراندند. این نتیجه محدودهٔ اعتبارسنجی Spill/Reload در سطح Operation-level از N113 را می‌بندد.
+برای N114 v10.63، Full Regression روی Windows/MSVC برای موجودی تعریف‌شدهٔ ۱۷۵٬۹۷۶ تست با PASS ثبت شده است: هر ۲۶ Batch معتبر، بدون شکست و بدون شناسهٔ تکراری، و ماتریس Build با ۹ از ۹ هدف موفق.
 
-محدودهٔ مهندسی بعدی N114 است: یکپارچه‌سازی CFG Edge Bundle و edgeهای CFG. مقدار G11 همچنان ۰ از ۷ است و در G62R18 عملیات Edge Bundle insertion انجام نشد. Full Regression و اجرای End-to-End فایل PE تولیدشده همچنان تأیید نشده‌اند. جزئیات محدوده و شواهد در [رکورد اعتبارسنجی G62R18](G62R18_VALIDATION_FA.md) آمده است.
+این اعتبارسنجی از Workspace محلی کاربر به دست آمده است؛ Runner، SHA مربوط به commit سورس را ثبت نکرد. هنوز یکسان‌بودن کامل درخت سورس آزموده‌شده با `main` عمومی اثبات نشده است. این مستندات نتیجهٔ محلی را ثبت می‌کنند، اما سورس کامپایلر را همگام‌سازی نمی‌کنند. تطبیق کامل درخت Source عمومی، مرز انتشار بعدی است. جزئیات در [رکورد Full Regression مربوط به N114](milestones/PROJECT_X_N114_V10_63_FULL_REGRESSION_WINDOWS_MSVC_2026-11-27_FA.md) آمده است.
+
+Gateهای فنی N114 همچنان صریح‌اند: G9 فقط Statement-edge، مقدار G10 برابر DO_NOT_REBUILD، مقدار G11 برابر ۰ از ۷، مقدار `spill_call_crossing=true` و وضعیت XMM non-empty برابر open / blocked-not-proven-impossible است. ادعایی دربارهٔ Edge Bundle insertion یا اجرای End-to-End فایل PE تولیدشده مطرح نمی‌شود.
 
 ## شکاف‌های تاریخچه
 
