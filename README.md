@@ -43,23 +43,11 @@ I started this project because I want fast programs and small native executables
 
 I call the project **X** for now; its final name is still open. The repository is public and GitHub Discussions are open. You can suggest a name in [Ideas](https://github.com/hadighmoradi/Project-X/discussions/categories/ideas), one idea per discussion, and briefly explain why it fits. After the community has discussed the suggestions, I will shortlist candidates and open a poll in [Polls](https://github.com/hadighmoradi/Project-X/discussions/categories/polls). The name with the most votes when the poll closes will replace X. See [Project vision and naming](docs/PROJECT_VISION_AND_NAMING.md).
 
-## Latest validated workspace regression
+## Current development
 
-**N114 v10.63 · 27 November 2026 · `PASS_FULL_REGRESSION`**
+The latest compiler work improves expression-level control-flow handling for short-circuit logical operators such as `&&` and `||`. The frontend now represents the paths through these expressions explicitly, while control-flow analysis distinguishes paths that can execute from paths that are retained for correct native-code generation. The x64 backend tracks the corresponding branch locations as emitted code is laid out.
 
-| Measure | Result |
-|---|---:|
-| Declared inventory | **175,976 / 175,976 passed** |
-| Valid batches | **26 / 26** |
-| Failed tests / global duplicate IDs | **0 / 0** |
-| Windows build matrix | **9 / 9 targets, exit code 0** |
-| Seven source hash guards | **7 / 7, zero failures** |
-
-The N114 v10.63 source snapshot is now integrated into public `main`. Source commit `6e802faf646a301f124026d5d0661796dd97080b` was merged through [PR #7](https://github.com/hadighmoradi/Project-X/pull/7); the source merge commit is `320c8d737aa2dc7dd9989026c6ffa3781248e77b`. The curated bundle contained 194 files: all 193 previously tracked source paths plus the new N114 B13-B test. The source PR changed 15 paths (14 existing files and one new file).
-
-The Full Regression result remains evidence for the user's local Windows/MSVC workspace. The runner did not record a source commit SHA, so this historical PASS is **not** claimed as a run against source commit `6e802faf646a301f124026d5d0661796dd97080b` or the merge commit. Validation against the exact published source revision remains pending; seven named hash guards do not establish full-tree test provenance.
-
-See the [source-tree reconciliation and publication audit](docs/milestones/PROJECT_X_N114_SOURCE_TREE_RECONCILIATION_AUDIT_2026-11-27.md), the [public main synchronization record](docs/milestones/PROJECT_X_N114_PUBLIC_MAIN_SYNC_2026-11-27.md), and the [Full Regression milestone](docs/milestones/PROJECT_X_N114_V10_63_FULL_REGRESSION_WINDOWS_MSVC_2026-11-27.md). Historical G62R18 evidence remains available and has not been overwritten.
+This is an implementation milestone in the compiler. It does not mean that the complete X language, runtime, standard library, IDE, or visual form designer is finished. See the [N114 expression control-flow milestone](docs/milestones/N114_EXPRESSION_CONTROL_FLOW_2026-11-27.md) and the [current project status](docs/STATUS.md).
 
 ## Architecture
 
