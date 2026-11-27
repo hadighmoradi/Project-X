@@ -9,7 +9,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 # Update this cumulative count whenever a milestone adds regression cases.
-set(XFRONTEND_TEST_INVENTORY_TOTAL 175976)
+set(XFRONTEND_TEST_INVENTORY_TOTAL 175978)
 
 add_library(xfrontend
     src/source_manager.cpp
