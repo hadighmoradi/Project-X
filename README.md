@@ -71,11 +71,11 @@ The active backend is custom x64 (x86-64) code, not LLVM. The current Windows pa
 
 ## Build and test
 
-See [Getting started](docs/GETTING_STARTED.md) for the CMake commands and scope of the registered test. They are documented commands, not a claim that this snapshot was built during preparation.
+See [Getting started](docs/GETTING_STARTED.md) for the requirements, CMake configuration, build commands, and test target.
 
 ## Development history
 
-The public-facing milestone summary is in [Development history](docs/DEVELOPMENT_HISTORY.md). Detailed patch manifests and host-validation evidence remain in the working archive; they are intentionally not copied into this source snapshot.
+The [development history](docs/DEVELOPMENT_HISTORY.md) summarizes the main stages in the evolution of the X language frontend, compiler architecture, and native code generation.
 
 ## Project status and architecture
 
@@ -103,4 +103,4 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution requirements, file notic
 
 ## Explore the language
 
-See the [language design page](language-design.html) for the ideas behind X, a few code examples, and the current state of the compiler. The [development process](docs/DEVELOPMENT_WORKFLOW.md) explains how completed work and test results are recorded.
+Visit the [language design page](language-design.html) for design goals, syntax examples, and the current compiler implementation. The [project guide](project-guide.html) explains the build requirements and compiler architecture.
