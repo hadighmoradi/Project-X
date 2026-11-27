@@ -658,7 +658,6 @@ void test_c20_functions_without_logical_expressions_emit_no_occupancy_records() 
 }
 
 
-
 void require_xmm_live_across_nested_call_argument(const std::string& module_name,
                                                   const std::string& logical_operator,
                                                   const std::string& case_name) {
@@ -678,6 +677,7 @@ void require_xmm_live_across_nested_call_argument(const std::string& module_name
         case_name + " did not produce exactly one four-edge expression occupancy group");
 
     const auto& expected_xmm_stack = captures.front().xmm_stack_order;
+    const auto& expected_xmm_occupancy = captures.front().xmm_occupancy;
     require(!expected_xmm_stack.empty(),
         case_name + " did not keep the outer floating-point temporary live at the nested logical seams");
     for (const auto reg : expected_xmm_stack) {
@@ -688,7 +688,7 @@ void require_xmm_live_across_nested_call_argument(const std::string& module_name
         require(capture.capture_complete && capture.xmm_depth > 0U &&
                 capture.xmm_stack_order == expected_xmm_stack &&
                 capture.xmm_depth == expected_xmm_stack.size() &&
-                capture.xmm_occupancy.size() == expected_xmm_stack.size(),
+                capture.xmm_occupancy == expected_xmm_occupancy,
             case_name + " did not retain the same live XMM occupancy at all four Expression edges");
     }
 }
