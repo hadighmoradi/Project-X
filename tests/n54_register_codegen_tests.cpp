@@ -87,7 +87,7 @@ void test_n54_allocator_volatile_policy(std::size_t index) {
         NativeLiveInterval{static_cast<std::uint32_t>(100U + index), 0U, 10U, NativeRegisterClass::GeneralPurpose, false},
         NativeLiveInterval{static_cast<std::uint32_t>(200U + index), 2U, 8U, NativeRegisterClass::GeneralPurpose, false},
         NativeLiveInterval{static_cast<std::uint32_t>(300U + index), 11U, 14U, NativeRegisterClass::GeneralPurpose, false}},
-        NativeRegisterAllocationOptions{true, true});
+        NativeRegisterAllocationOptions{true, true, false, false});
     require(allocated.succeeded && allocated.assignments.size() == 3U,
             "caller-saved register allocation did not return all intervals");
     const auto& first = allocated.assignments[0U];
@@ -111,7 +111,7 @@ void test_n54_allocator_spills_call_crossing(std::size_t index) {
     const auto allocated = allocate_native_registers({
         NativeLiveInterval{static_cast<std::uint32_t>(500U + index), 0U, 100U, NativeRegisterClass::GeneralPurpose, true},
         NativeLiveInterval{static_cast<std::uint32_t>(600U + index), 1U, 5U, NativeRegisterClass::GeneralPurpose, false}},
-        NativeRegisterAllocationOptions{true, true});
+        NativeRegisterAllocationOptions{true, true, false, false});
     require(allocated.succeeded && allocated.assignments.size() == 2U,
             "call-crossing allocator result is incomplete");
     const auto found = std::find_if(allocated.assignments.begin(), allocated.assignments.end(), [&](const auto& item) {

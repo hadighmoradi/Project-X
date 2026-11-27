@@ -83,6 +83,7 @@ NativeRegisterFlowLoweringResult lower_control_flow_to_native_register_ir(
         lowered.function_name = graph.function_name;
         lowered.control_statements = graph.control_statements;
         lowered.edges = graph.edges;
+        lowered.expression_controls = graph.expression_controls;
         lowered.register_ir.entry_block = static_cast<NativeRegisterBlockId>(graph.entry_block);
         if (graph.blocks.empty() ||
             graph.blocks.size() > static_cast<std::size_t>(std::numeric_limits<NativeRegisterBlockId>::max())) {
@@ -106,8 +107,27 @@ NativeRegisterFlowLoweringResult lower_control_flow_to_native_register_ir(
                 return result;
             }
         }
+        std::set<FlowExpressionId> expression_ids;
+        for (const auto& expression : graph.expression_controls) {
+            if (expression.id == InvalidFlowExpressionId ||
+                !expression_ids.insert(expression.id).second || expression.ast_expression == nullptr ||
+                expression.kind != ExprKind::Binary ||
+                (expression.operator_text != "&&" && expression.operator_text != "||") ||
+                expression.ast_expression->kind != expression.kind ||
+                expression.ast_expression->text != expression.operator_text ||
+                expression.ast_expression->children.size() != 2U ||
+                !expression.ast_expression->children[0] || !expression.ast_expression->children[1] ||
+                expression.ast_expression->span.start.byte_offset != expression.span.start.byte_offset ||
+                expression.ast_expression->span.end.byte_offset != expression.span.end.byte_offset) {
+                add_register_diagnostic(result.diagnostics, "N109AE0008",
+                    "frontend CFG has an invalid, duplicate, or unsupported logical-expression identity");
+                return result;
+            }
+        }
+
         std::set<FlowEdgeId> edge_ids;
         std::set<std::pair<FlowBlockId, FlowBlockId>> edge_endpoints;
+        std::set<std::pair<FlowBlockId, FlowBlockId>> feasible_edge_endpoints;
         for (const auto& edge : graph.edges) {
             if (edge.id == InvalidFlowEdgeId || !edge_ids.insert(edge.id).second ||
                 edge.from_block_id >= graph.blocks.size() || edge.to_block_id >= graph.blocks.size() ||
@@ -118,10 +138,44 @@ NativeRegisterFlowLoweringResult lower_control_flow_to_native_register_ir(
             }
             const auto& from = graph.blocks[edge.from_block_id];
             const auto& to = graph.blocks[edge.to_block_id];
-            if (std::find(from.successors.begin(), from.successors.end(), edge.to_block_id) == from.successors.end() ||
-                std::find(to.predecessors.begin(), to.predecessors.end(), edge.from_block_id) == to.predecessors.end()) {
+            const bool in_successors = std::find(from.successors.begin(), from.successors.end(),
+                                                 edge.to_block_id) != from.successors.end();
+            const bool in_predecessors = std::find(to.predecessors.begin(), to.predecessors.end(),
+                                                   edge.from_block_id) != to.predecessors.end();
+            if (edge.analysis_feasible != in_successors ||
+                edge.analysis_feasible != in_predecessors) {
                 add_register_diagnostic(result.diagnostics, "N109AE0004",
-                    "frontend CFG edge metadata is inconsistent with predecessor/successor lists");
+                    "frontend CFG edge feasibility is inconsistent with predecessor/successor adjacency");
+                return result;
+            }
+            if (edge.analysis_feasible) {
+                feasible_edge_endpoints.insert({edge.from_block_id, edge.to_block_id});
+            }
+            const bool is_expression_edge_kind =
+                edge.kind == FlowEdgeKind::ExpressionEvaluateRhs ||
+                edge.kind == FlowEdgeKind::ExpressionShortCircuit ||
+                edge.kind == FlowEdgeKind::ExpressionRhsMerge ||
+                edge.kind == FlowEdgeKind::ExpressionShortMerge;
+            if (edge.domain == FlowEdgeDomain::Statement) {
+                if (edge.expression_id != InvalidFlowExpressionId || is_expression_edge_kind ||
+                    !edge.analysis_feasible) {
+                    add_register_diagnostic(result.diagnostics, "N109AE0008",
+                        "statement edge has expression-only metadata or an unsupported infeasible statement state");
+                    return result;
+                }
+            } else if (edge.domain == FlowEdgeDomain::Expression) {
+                if (edge.expression_id == InvalidFlowExpressionId ||
+                    expression_ids.find(edge.expression_id) == expression_ids.end() ||
+                    edge.control_statement_id != InvalidFlowControlStatementId ||
+                    edge.control_construct_id != InvalidFlowControlConstructId ||
+                    !edge.machine_emission_required || !is_expression_edge_kind) {
+                    add_register_diagnostic(result.diagnostics, "N109AE0008",
+                        "expression edge is missing its logical-expression identity, kind, or emission obligation");
+                    return result;
+                }
+            } else {
+                add_register_diagnostic(result.diagnostics, "N109AE0008",
+                    "frontend CFG edge has an unknown domain");
                 return result;
             }
             if (edge.control_statement_id != InvalidFlowControlStatementId &&
@@ -137,11 +191,79 @@ NativeRegisterFlowLoweringResult lower_control_flow_to_native_register_ir(
                 return result;
             }
         }
+
+        struct ExpressionEdgeGroup {
+            const FlowEdge* rhs = nullptr;
+            const FlowEdge* short_circuit = nullptr;
+            const FlowEdge* rhs_merge = nullptr;
+            const FlowEdge* short_merge = nullptr;
+        };
+        std::map<FlowExpressionId, ExpressionEdgeGroup> expression_edges;
+        for (const auto& edge : graph.edges) {
+            if (edge.domain != FlowEdgeDomain::Expression) continue;
+            auto& group = expression_edges[edge.expression_id];
+            const FlowEdge** slot = nullptr;
+            switch (edge.kind) {
+            case FlowEdgeKind::ExpressionEvaluateRhs: slot = &group.rhs; break;
+            case FlowEdgeKind::ExpressionShortCircuit: slot = &group.short_circuit; break;
+            case FlowEdgeKind::ExpressionRhsMerge: slot = &group.rhs_merge; break;
+            case FlowEdgeKind::ExpressionShortMerge: slot = &group.short_merge; break;
+            default: break;
+            }
+            if (slot == nullptr || *slot != nullptr) {
+                add_register_diagnostic(result.diagnostics, "N109AE0009",
+                    "expression control has an unknown or duplicate semantic edge kind");
+                return result;
+            }
+            *slot = &edge;
+        }
+        if (expression_edges.size() != expression_ids.size()) {
+            add_register_diagnostic(result.diagnostics, "N109AE0009",
+                "logical-expression identity does not have exactly one complete edge group");
+            return result;
+        }
+        for (const auto& item : expression_edges) {
+            const auto& group = item.second;
+            if (group.rhs == nullptr || group.short_circuit == nullptr ||
+                group.rhs_merge == nullptr || group.short_merge == nullptr ||
+                group.rhs->from_block_id != group.short_circuit->from_block_id ||
+                group.rhs->to_block_id == group.short_circuit->to_block_id ||
+                group.rhs_merge->to_block_id != group.short_merge->to_block_id ||
+                !group.rhs_merge->analysis_feasible || !group.short_merge->analysis_feasible ||
+                (!group.rhs->analysis_feasible && !group.short_circuit->analysis_feasible)) {
+                add_register_diagnostic(result.diagnostics, "N109AE0009",
+                    "logical-expression edge group does not form one feasible RHS/short-circuit split and merge");
+                return result;
+            }
+        }
+
+        std::set<std::pair<FlowBlockId, FlowBlockId>> successor_endpoints;
+        std::set<std::pair<FlowBlockId, FlowBlockId>> predecessor_endpoints;
         std::size_t successor_count = 0U;
-        for (const auto& block : graph.blocks) successor_count += block.successors.size();
-        if (successor_count != graph.edges.size()) {
+        for (const auto& block : graph.blocks) {
+            successor_count += block.successors.size();
+            for (const FlowBlockId successor : block.successors) {
+                if (successor >= graph.blocks.size() ||
+                    !successor_endpoints.insert({block.id, successor}).second) {
+                    add_register_diagnostic(result.diagnostics, "N109AE0007",
+                        "frontend CFG successor adjacency contains an invalid or duplicate pair");
+                    return result;
+                }
+            }
+            for (const FlowBlockId predecessor : block.predecessors) {
+                if (predecessor >= graph.blocks.size() ||
+                    !predecessor_endpoints.insert({predecessor, block.id}).second) {
+                    add_register_diagnostic(result.diagnostics, "N109AE0007",
+                        "frontend CFG predecessor adjacency contains an invalid or duplicate pair");
+                    return result;
+                }
+            }
+        }
+        if (successor_count != feasible_edge_endpoints.size() ||
+            successor_endpoints != feasible_edge_endpoints ||
+            predecessor_endpoints != feasible_edge_endpoints) {
             add_register_diagnostic(result.diagnostics, "N109AE0007",
-                "frontend CFG edge metadata does not cover every successor relation exactly once");
+                "frontend CFG feasible edge set does not cover successor and predecessor adjacency exactly once");
             return result;
         }
 

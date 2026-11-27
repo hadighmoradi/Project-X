@@ -163,6 +163,13 @@ private:
     std::unordered_set<std::string> import_roots_;
     std::unordered_map<const Statement*, FlowControlStatementId> control_statement_ids_;
     FlowEdgeId next_edge_id_ = 1U;
+    FlowExpressionId next_expression_id_ = 1U;
+    std::unordered_map<const Expression*, FlowExpressionId> expression_ids_;
+
+    struct ExpressionResult {
+        FlowBlockId exit_block = InvalidFlowBlockId;
+        std::optional<bool> known_boolean_result;
+    };
 
     FlowBlockId add_block(const SourceSpan& span = {}) {
         const FlowBlockId id = graph_.blocks.size();
@@ -183,21 +190,50 @@ private:
                   FlowEdgeKind kind = FlowEdgeKind::Sequential,
                   FlowControlStatementId control_id = InvalidFlowControlStatementId,
                   FlowControlConstructId construct_id = InvalidFlowControlConstructId,
-                  const SourceSpan& span = {}) {
+                  const SourceSpan& span = {},
+                  FlowEdgeDomain domain = FlowEdgeDomain::Statement,
+                  FlowExpressionId expression_id = InvalidFlowExpressionId,
+                  bool analysis_feasible = true,
+                  bool machine_emission_required = true) {
         if (from == InvalidFlowBlockId || to == InvalidFlowBlockId ||
             from >= graph_.blocks.size() || to >= graph_.blocks.size()) {
             return;
         }
-        auto& successors = graph_.blocks[from].successors;
-        if (std::find(successors.begin(), successors.end(), to) != successors.end()) {
-            return;
-        }
+        const auto duplicate = std::find_if(graph_.edges.begin(), graph_.edges.end(),
+            [from, to](const FlowEdge& edge) {
+                return edge.from_block_id == from && edge.to_block_id == to;
+            });
+        if (duplicate != graph_.edges.end()) return;
         if (next_edge_id_ == InvalidFlowEdgeId) return;
-        const FlowEdgeId edge_id = next_edge_id_++;
-        successors.push_back(to);
-        graph_.blocks[to].predecessors.push_back(from);
-        graph_.edges.push_back(FlowEdge{edge_id, from, to, kind, control_id,
-                                        construct_id, span});
+
+        if (analysis_feasible) {
+            graph_.blocks[from].successors.push_back(to);
+            graph_.blocks[to].predecessors.push_back(from);
+        }
+        FlowEdge edge;
+        edge.id = next_edge_id_++;
+        edge.from_block_id = from;
+        edge.to_block_id = to;
+        edge.kind = kind;
+        edge.control_statement_id = control_id;
+        edge.control_construct_id = construct_id;
+        edge.span = span;
+        edge.domain = domain;
+        edge.expression_id = expression_id;
+        edge.analysis_feasible = analysis_feasible;
+        edge.machine_emission_required = machine_emission_required;
+        graph_.edges.push_back(std::move(edge));
+    }
+
+    FlowExpressionId expression_control_id(const Expression& expression) {
+        const auto found = expression_ids_.find(&expression);
+        if (found != expression_ids_.end()) return found->second;
+        if (next_expression_id_ == InvalidFlowExpressionId) return InvalidFlowExpressionId;
+        const FlowExpressionId id = next_expression_id_++;
+        expression_ids_.emplace(&expression, id);
+        graph_.expression_controls.push_back(FlowExpressionControl{
+            id, expression.kind, expression.text, expression.span, &expression});
+        return id;
     }
 
     void emit(FlowBlockId block, FlowOperationKind kind, FlowVariableId id,
@@ -287,37 +323,125 @@ private:
         return current->kind == ExprKind::Identifier && is_import_root(current->text);
     }
 
-    void read_expression(const Expression& expression, FlowBlockId block, bool emit_owner_mutation = true) {
+    ExpressionResult read_expression(const Expression& expression, FlowBlockId block,
+                                     bool emit_owner_mutation = true) {
+        if (block == InvalidFlowBlockId || block >= graph_.blocks.size()) return {};
         switch (expression.kind) {
         case ExprKind::Literal:
-            break;
+            return ExpressionResult{block, constant_boolean(&expression)};
         case ExprKind::Identifier: {
             const auto variable = lookup_variable(expression.text);
             if (variable) {
                 emit(block, FlowOperationKind::Read, *variable, expression.text, expression.span);
             }
-            break;
+            return ExpressionResult{block, std::nullopt};
         }
-        case ExprKind::Unary:
-        case ExprKind::Binary:
-        case ExprKind::List:
-        case ExprKind::Index:
+        case ExprKind::Unary: {
+            FlowBlockId tail = block;
+            std::optional<bool> known_result;
             for (const auto& child : expression.children) {
-                if (child) read_expression(*child, block, emit_owner_mutation);
+                if (!child) continue;
+                const ExpressionResult child_result =
+                    read_expression(*child, tail, emit_owner_mutation);
+                tail = child_result.exit_block;
+                if (tail == InvalidFlowBlockId) return ExpressionResult{tail, std::nullopt};
+                if (expression.text == "!" && expression.children.size() == 1U &&
+                    child_result.known_boolean_result) {
+                    known_result = !*child_result.known_boolean_result;
+                }
             }
-            break;
+            return ExpressionResult{tail, known_result};
+        }
+        case ExprKind::Binary: {
+            const bool logical_and = expression.text == "&&";
+            const bool logical_or = expression.text == "||";
+            if ((logical_and || logical_or) && expression.children.size() >= 2U &&
+                expression.children[0] && expression.children[1]) {
+                const FlowExpressionId id = expression_control_id(expression);
+                if (id == InvalidFlowExpressionId) {
+                    return ExpressionResult{InvalidFlowBlockId, std::nullopt};
+                }
+                const ExpressionResult left = read_expression(
+                    *expression.children[0], block, emit_owner_mutation);
+                if (left.exit_block == InvalidFlowBlockId) return left;
+
+                const FlowBlockId rhs_entry = add_block(expression.children[1]->span);
+                const FlowBlockId short_entry = add_block(expression.span);
+                const FlowBlockId merge = add_block(expression.span);
+                const bool rhs_feasible = !left.known_boolean_result ||
+                    (logical_and ? *left.known_boolean_result : !*left.known_boolean_result);
+                const bool short_feasible = !left.known_boolean_result ||
+                    (logical_and ? !*left.known_boolean_result : *left.known_boolean_result);
+                add_edge(left.exit_block, rhs_entry, FlowEdgeKind::ExpressionEvaluateRhs,
+                    InvalidFlowControlStatementId, InvalidFlowControlConstructId,
+                    expression.span, FlowEdgeDomain::Expression, id, rhs_feasible, true);
+                add_edge(left.exit_block, short_entry, FlowEdgeKind::ExpressionShortCircuit,
+                    InvalidFlowControlStatementId, InvalidFlowControlConstructId,
+                    expression.span, FlowEdgeDomain::Expression, id, short_feasible, true);
+
+                const ExpressionResult right = read_expression(
+                    *expression.children[1], rhs_entry, emit_owner_mutation);
+                if (right.exit_block == InvalidFlowBlockId) return right;
+                add_edge(right.exit_block, merge, FlowEdgeKind::ExpressionRhsMerge,
+                    InvalidFlowControlStatementId, InvalidFlowControlConstructId,
+                    expression.span, FlowEdgeDomain::Expression, id, true, true);
+                add_edge(short_entry, merge, FlowEdgeKind::ExpressionShortMerge,
+                    InvalidFlowControlStatementId, InvalidFlowControlConstructId,
+                    expression.span, FlowEdgeDomain::Expression, id, true, true);
+
+                std::optional<bool> known_result;
+                if (logical_and) {
+                    if (left.known_boolean_result && !*left.known_boolean_result) {
+                        known_result = false;
+                    } else if (left.known_boolean_result && *left.known_boolean_result) {
+                        known_result = right.known_boolean_result;
+                    } else if (right.known_boolean_result && !*right.known_boolean_result) {
+                        known_result = false;
+                    }
+                } else {
+                    if (left.known_boolean_result && *left.known_boolean_result) {
+                        known_result = true;
+                    } else if (left.known_boolean_result && !*left.known_boolean_result) {
+                        known_result = right.known_boolean_result;
+                    } else if (right.known_boolean_result && *right.known_boolean_result) {
+                        known_result = true;
+                    }
+                }
+                return ExpressionResult{merge, known_result};
+            }
+            FlowBlockId tail = block;
+            for (const auto& child : expression.children) {
+                if (!child) continue;
+                tail = read_expression(*child, tail, emit_owner_mutation).exit_block;
+                if (tail == InvalidFlowBlockId) return ExpressionResult{tail, std::nullopt};
+            }
+            return ExpressionResult{tail, std::nullopt};
+        }
+        case ExprKind::List:
+        case ExprKind::Index: {
+            FlowBlockId tail = block;
+            for (const auto& child : expression.children) {
+                if (!child) continue;
+                tail = read_expression(*child, tail, emit_owner_mutation).exit_block;
+                if (tail == InvalidFlowBlockId) return ExpressionResult{tail, std::nullopt};
+            }
+            return ExpressionResult{tail, std::nullopt};
+        }
         case ExprKind::Member:
-            if (is_import_qualified(expression)) break;
+            if (is_import_qualified(expression)) return ExpressionResult{block, std::nullopt};
             if (!expression.children.empty() && expression.children[0]) {
-                read_expression(*expression.children[0], block, emit_owner_mutation);
+                return read_expression(*expression.children[0], block, emit_owner_mutation);
             }
-            break;
+            return ExpressionResult{block, std::nullopt};
         case ExprKind::Call: {
-            if (expression.children.empty() || !expression.children[0]) break;
+            FlowBlockId tail = block;
+            if (expression.children.empty() || !expression.children[0]) {
+                return ExpressionResult{tail, std::nullopt};
+            }
             const Expression& callee = *expression.children[0];
             if (callee.kind == ExprKind::Identifier) {
                 if (lookup_variable(callee.text)) {
-                    read_expression(callee, block, emit_owner_mutation);
+                    tail = read_expression(callee, tail, emit_owner_mutation).exit_block;
                 } else if (is_builtin_name(callee.text)) {
                     // Prelude functions are not variable reads.
                 } else {
@@ -326,15 +450,20 @@ private:
             } else if (callee.kind == ExprKind::Member && is_import_qualified(callee)) {
                 // Imported module namespace is not a local variable.
             } else {
-                read_expression(callee, block, emit_owner_mutation);
+                tail = read_expression(callee, tail, emit_owner_mutation).exit_block;
             }
+            if (tail == InvalidFlowBlockId) return ExpressionResult{tail, std::nullopt};
             for (std::size_t index = 1; index < expression.children.size(); ++index) {
-                if (expression.children[index]) read_expression(*expression.children[index], block, emit_owner_mutation);
+                if (expression.children[index]) {
+                    tail = read_expression(*expression.children[index], tail,
+                                           emit_owner_mutation).exit_block;
+                    if (tail == InvalidFlowBlockId) return ExpressionResult{tail, std::nullopt};
+                }
             }
             // Keep the call as an explicit operation after evaluating its callee
             // and arguments so downstream native-register analysis sees the ABI
             // clobber boundary in source evaluation order.
-            emit(block, FlowOperationKind::Call, InvalidFlowVariableId, {}, expression.span);
+            emit(tail, FlowOperationKind::Call, InvalidFlowVariableId, {}, expression.span);
             const Expression* owner_receiver = nullptr;
             const bool take_event = is_method_named(expression, "Take", &owner_receiver);
             const bool reset_event = is_method_named(expression, "Reset", &owner_receiver) ||
@@ -343,18 +472,19 @@ private:
                 owner_receiver->kind == ExprKind::Identifier) {
                 const auto owner_id = lookup_variable(owner_receiver->text);
                 if (owner_id && graph_.variables[*owner_id].is_unique_owner) {
-                    emit(block, take_event ? FlowOperationKind::OwnerTransfer : FlowOperationKind::OwnerReset,
+                    emit(tail, take_event ? FlowOperationKind::OwnerTransfer : FlowOperationKind::OwnerReset,
                          *owner_id, owner_receiver->text, expression.span);
                 }
             }
-            break;
+            return ExpressionResult{tail, std::nullopt};
         }
         }
+        return ExpressionResult{block, std::nullopt};
     }
 
-    void read_target_address(const Expression& target, FlowBlockId block) {
-        if (target.kind == ExprKind::Identifier) return;
-        read_expression(target, block);
+    FlowBlockId read_target_address(const Expression& target, FlowBlockId block) {
+        if (target.kind == ExprKind::Identifier) return block;
+        return read_expression(target, block).exit_block;
     }
 
     FlowBlockId build_statement(const Statement& statement, FlowBlockId current,
@@ -378,45 +508,47 @@ private:
             return tail;
         }
         case StatementKind::VariableDeclaration: {
+            FlowBlockId tail = current;
             if (!statement.expressions.empty() && statement.expressions[0]) {
                 const Expression* take_receiver = nullptr;
                 const bool top_level_take = is_method_named(*statement.expressions[0], "Take", &take_receiver);
-                read_expression(*statement.expressions[0], current, !top_level_take);
+                tail = read_expression(*statement.expressions[0], tail, !top_level_take).exit_block;
+                if (tail == InvalidFlowBlockId) return tail;
             }
             const FlowVariableId id = declare_variable(statement.name, statement.span, false,
                                                        statement.type_name);
-            emit(current, FlowOperationKind::Declare, id, statement.name, statement.span,
+            emit(tail, FlowOperationKind::Declare, id, statement.name, statement.span,
                  !statement.expressions.empty());
             if (graph_.variables[id].is_unique_owner) {
                 const Expression* initializer = statement.expressions.empty()
                     ? nullptr : statement.expressions[0].get();
                 if (initializer == nullptr) {
-                    emit(current, FlowOperationKind::OwnerReset, id, statement.name, statement.span);
+                    emit(tail, FlowOperationKind::OwnerReset, id, statement.name, statement.span);
                 } else {
                     const Expression* take_receiver = nullptr;
                     if (is_method_named(*initializer, "Take", &take_receiver) &&
                         take_receiver != nullptr && take_receiver->kind == ExprKind::Identifier) {
                         const auto source_id = lookup_variable(take_receiver->text);
                         if (source_id && graph_.variables[*source_id].is_unique_owner) {
-                            emit(current, FlowOperationKind::OwnerTransfer, *source_id,
+                            emit(tail, FlowOperationKind::OwnerTransfer, *source_id,
                                  take_receiver->text, initializer->span, false, id);
                         } else {
-                            emit(current, FlowOperationKind::OwnerCreate, id, statement.name, initializer->span);
+                            emit(tail, FlowOperationKind::OwnerCreate, id, statement.name, initializer->span);
                         }
                     } else if (initializer->kind == ExprKind::Identifier) {
                         const auto source_id = lookup_variable(initializer->text);
                         if (source_id && graph_.variables[*source_id].is_unique_owner) {
-                            emit(current, FlowOperationKind::OwnerCopy, id, statement.name,
+                            emit(tail, FlowOperationKind::OwnerCopy, id, statement.name,
                                  initializer->span, false, *source_id);
                         } else {
-                            emit(current, FlowOperationKind::OwnerCreate, id, statement.name, initializer->span);
+                            emit(tail, FlowOperationKind::OwnerCreate, id, statement.name, initializer->span);
                         }
                     } else {
-                        emit(current, FlowOperationKind::OwnerCreate, id, statement.name, initializer->span);
+                        emit(tail, FlowOperationKind::OwnerCreate, id, statement.name, initializer->span);
                     }
                 }
             }
-            return current;
+            return tail;
         }
         case StatementKind::Assignment: {
             if (statement.expressions.size() < 2U || !statement.expressions[0] ||
@@ -425,7 +557,8 @@ private:
             const Expression& value = *statement.expressions[1];
             const Expression* top_level_take_receiver = nullptr;
             const bool top_level_take = is_method_named(value, "Take", &top_level_take_receiver);
-            read_expression(value, current, !top_level_take);
+            current = read_expression(value, current, !top_level_take).exit_block;
+            if (current == InvalidFlowBlockId) return current;
             if (target.kind == ExprKind::Identifier) {
                 auto id = lookup_variable(target.text);
                 if (!id) id = declare_variable(target.text, target.span);
@@ -466,19 +599,25 @@ private:
                     }
                 }
             } else {
-                read_target_address(target, current);
+                current = read_target_address(target, current);
             }
             return current;
         }
-        case StatementKind::Expression:
+        case StatementKind::Expression: {
+            FlowBlockId tail = current;
             for (const auto& expression : statement.expressions) {
-                if (expression) read_expression(*expression, current);
+                if (expression) {
+                    tail = read_expression(*expression, tail).exit_block;
+                    if (tail == InvalidFlowBlockId) return tail;
+                }
             }
-            return current;
+            return tail;
+        }
         case StatementKind::Return:
             if (!statement.expressions.empty() && statement.expressions[0]) {
                 const Expression& returned = *statement.expressions[0];
-                read_expression(returned, current);
+                current = read_expression(returned, current).exit_block;
+                if (current == InvalidFlowBlockId) return current;
                 if (returned.kind == ExprKind::Identifier) {
                     const auto returned_id = lookup_variable(returned.text);
                     if (returned_id && graph_.variables[*returned_id].is_unique_owner) {
@@ -495,11 +634,14 @@ private:
         case StatementKind::If: {
             const FlowControlStatementId if_id = control_statement_id(statement);
             if (if_id == InvalidFlowControlStatementId) return current;
+            std::optional<bool> known;
             if (!statement.expressions.empty() && statement.expressions[0]) {
-                read_expression(*statement.expressions[0], current);
+                const ExpressionResult condition_result =
+                    read_expression(*statement.expressions[0], current);
+                current = condition_result.exit_block;
+                known = condition_result.known_boolean_result;
+                if (current == InvalidFlowBlockId) return current;
             }
-            const std::optional<bool> known = constant_boolean(
-                statement.expressions.empty() ? nullptr : statement.expressions[0].get());
             const FlowBlockId then_entry = add_block(statement.span);
             const FlowBlockId join = add_block(statement.span);
             if (statement.else_branch) {
@@ -558,14 +700,17 @@ private:
             const FlowBlockId after = add_block(statement.span);
             add_edge(current, condition, FlowEdgeKind::LoopEntry,
                 while_id, while_id, statement.span);
+            FlowBlockId condition_tail = condition;
+            std::optional<bool> known;
             if (!statement.expressions.empty() && statement.expressions[0]) {
-                read_expression(*statement.expressions[0], condition);
+                const ExpressionResult condition_result =
+                    read_expression(*statement.expressions[0], condition_tail);
+                condition_tail = condition_result.exit_block;
+                known = condition_result.known_boolean_result;
             }
-            const std::optional<bool> known = constant_boolean(
-                statement.expressions.empty() ? nullptr : statement.expressions[0].get());
-            if (!known || *known) add_edge(condition, body_entry, FlowEdgeKind::LoopBody,
+            if (!known || *known) add_edge(condition_tail, body_entry, FlowEdgeKind::LoopBody,
                 while_id, while_id, statement.span);
-            if (!known || !*known) add_edge(condition, after, FlowEdgeKind::LoopExit,
+            if (!known || !*known) add_edge(condition_tail, after, FlowEdgeKind::LoopExit,
                 while_id, while_id, statement.span); // Unknown/false condition can exit.
             const std::size_t loop_scope_depth = owner_scopes_.size();
             loops_.push_back(LoopTargets{after, condition, loop_scope_depth, while_id});
@@ -589,7 +734,8 @@ private:
             const FlowControlStatementId for_id = control_statement_id(statement);
             if (for_id == InvalidFlowControlStatementId) return current;
             if (!statement.expressions.empty() && statement.expressions[0]) {
-                read_expression(*statement.expressions[0], current);
+                current = read_expression(*statement.expressions[0], current).exit_block;
+                if (current == InvalidFlowBlockId) return current;
             }
             const FlowBlockId condition = add_block();
             const FlowBlockId body_entry = add_block();

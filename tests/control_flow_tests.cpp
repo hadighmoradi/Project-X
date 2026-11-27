@@ -6,6 +6,7 @@
 #include "xfrontend/semantic.hpp"
 #include "test_report.hpp"
 
+#include <algorithm>
 #include <chrono>
 
 #include <functional>
@@ -283,6 +284,177 @@ void run_control_flow_tests(int& passed, int& failed) {
             if (diagnostic.code == "XFLOW0001") found = true;
         }
         flow_require(found, "program semantic analysis should include definite initialization");
+    }, passed, failed);
+
+    flow_case("B13A01_false_and_unreachable_rhs_read", [&] {
+        const auto parsed = parse_source(
+            "function Main() returns bool { int value; return false && (value > 0); }");
+        flow_require(parsed.succeeded(), "B13A01 source should parse");
+        const auto result = analyze_control_flow(parsed.unit);
+        flow_require(!has_flow_code(result, "XFLOW0001"),
+            "B13A01 unreachable RHS read must not trigger definite-initialization");
+        flow_require(result.functions.size() == 1U, "B13A01 expected one Flow function");
+        const auto& graph = result.functions.front();
+        const auto rhs_edge = std::find_if(graph.edges.begin(), graph.edges.end(),
+            [](const FlowEdge& edge) {
+                return edge.domain == FlowEdgeDomain::Expression &&
+                       edge.kind == FlowEdgeKind::ExpressionEvaluateRhs;
+            });
+        flow_require(rhs_edge != graph.edges.end() && !rhs_edge->analysis_feasible &&
+                     rhs_edge->machine_emission_required,
+            "B13A01 RHS edge must be analysis-infeasible but machine-emission-required");
+        const auto& rhs_block = graph.blocks[rhs_edge->to_block_id];
+        flow_require(std::any_of(rhs_block.operations.begin(), rhs_block.operations.end(),
+            [](const FlowOperation& operation) { return operation.kind == FlowOperationKind::Read; }),
+            "B13A01 unreachable RHS FlowRead must be retained for emitted-code provenance");
+        flow_require(std::find(graph.blocks[rhs_edge->from_block_id].successors.begin(),
+                               graph.blocks[rhs_edge->from_block_id].successors.end(),
+                               rhs_edge->to_block_id) ==
+                     graph.blocks[rhs_edge->from_block_id].successors.end(),
+            "B13A01 infeasible RHS edge must not enter analysis adjacency");
+    }, passed, failed);
+
+    flow_case("B13A02_true_or_unreachable_rhs_read", [&] {
+        const auto parsed = parse_source(
+            "function Main() returns bool { int value; return true || (value > 0); }");
+        flow_require(parsed.succeeded(), "B13A02 source should parse");
+        const auto result = analyze_control_flow(parsed.unit);
+        flow_require(!has_flow_code(result, "XFLOW0001"),
+            "B13A02 unreachable RHS read must not trigger definite-initialization");
+        const auto& graph = result.functions.front();
+        const auto rhs_edge = std::find_if(graph.edges.begin(), graph.edges.end(),
+            [](const FlowEdge& edge) {
+                return edge.domain == FlowEdgeDomain::Expression &&
+                       edge.kind == FlowEdgeKind::ExpressionEvaluateRhs;
+            });
+        flow_require(rhs_edge != graph.edges.end() && !rhs_edge->analysis_feasible &&
+                     rhs_edge->machine_emission_required,
+            "B13A02 RHS edge must be analysis-infeasible but machine-emission-required");
+    }, passed, failed);
+
+    flow_case("B13A03_dynamic_and_rhs_read_remains_conditional", [&] {
+        const auto parsed = parse_source(
+            "function Main(bool flag) returns bool { int value; return flag && (value > 0); }");
+        flow_require(parsed.succeeded(), "B13A03 source should parse");
+        const auto result = analyze_control_flow(parsed.unit);
+        flow_require(has_flow_code(result, "XFLOW0001"),
+            "B13A03 conditionally reachable RHS read must still be diagnosed");
+        const auto& graph = result.functions.front();
+        const auto rhs_edge = std::find_if(graph.edges.begin(), graph.edges.end(),
+            [](const FlowEdge& edge) {
+                return edge.domain == FlowEdgeDomain::Expression &&
+                       edge.kind == FlowEdgeKind::ExpressionEvaluateRhs;
+            });
+        const auto short_edge = std::find_if(graph.edges.begin(), graph.edges.end(),
+            [](const FlowEdge& edge) {
+                return edge.domain == FlowEdgeDomain::Expression &&
+                       edge.kind == FlowEdgeKind::ExpressionShortCircuit;
+            });
+        flow_require(rhs_edge != graph.edges.end() && rhs_edge->analysis_feasible &&
+                     short_edge != graph.edges.end() && short_edge->analysis_feasible,
+            "B13A03 unknown left operand must retain both RHS and short-circuit paths");
+    }, passed, failed);
+
+    flow_case("B13A04_dynamic_or_rhs_read_remains_conditional", [&] {
+        const auto parsed = parse_source(
+            "function Main(bool flag) returns bool { int value; return flag || (value > 0); }");
+        flow_require(parsed.succeeded(), "B13A04 source should parse");
+        const auto result = analyze_control_flow(parsed.unit);
+        flow_require(has_flow_code(result, "XFLOW0001"),
+            "B13A04 conditionally reachable RHS read must still be diagnosed");
+        const auto& graph = result.functions.front();
+        const auto rhs_edge = std::find_if(graph.edges.begin(), graph.edges.end(),
+            [](const FlowEdge& edge) {
+                return edge.domain == FlowEdgeDomain::Expression &&
+                       edge.kind == FlowEdgeKind::ExpressionEvaluateRhs;
+            });
+        flow_require(rhs_edge != graph.edges.end() && rhs_edge->analysis_feasible,
+            "B13A04 unknown left operand must retain the OR RHS path");
+    }, passed, failed);
+
+    flow_case("B13A05_nested_known_boolean_prunes_statement_branch", [&] {
+        const auto parsed = parse_source(
+            "function Main(bool flag) returns int { int value; "
+            "if (false && (flag || (value > 0))) { return 1; } else { return 2; } }");
+        flow_require(parsed.succeeded(), "B13A05 source should parse");
+        const auto result = analyze_control_flow(parsed.unit);
+        flow_require(!has_flow_code(result, "XFLOW0001"),
+            "B13A05 nested unreachable reads must not trigger definite-initialization");
+        const auto& graph = result.functions.front();
+        flow_require(graph.expression_controls.size() == 2U,
+            "B13A05 both nested logical controls must receive identities");
+        const auto true_edge = std::find_if(graph.edges.begin(), graph.edges.end(),
+            [](const FlowEdge& edge) { return edge.kind == FlowEdgeKind::IfTrue; });
+        const auto false_edge = std::find_if(graph.edges.begin(), graph.edges.end(),
+            [](const FlowEdge& edge) { return edge.kind == FlowEdgeKind::IfFalse; });
+        flow_require(true_edge == graph.edges.end() && false_edge != graph.edges.end(),
+            "B13A05 known-false logical result must prune IfTrue and preserve IfFalse");
+    }, passed, failed);
+
+    flow_case("B13A06_known_true_loop_condition_prunes_loop_exit", [&] {
+        const auto parsed = parse_source(
+            "function Main() { int value; while (true || (value > 0)) { break; } }");
+        flow_require(parsed.succeeded(), "B13A06 source should parse");
+        const auto result = analyze_control_flow(parsed.unit);
+        flow_require(!has_flow_code(result, "XFLOW0001"),
+            "B13A06 unreachable condition RHS read must not be diagnosed");
+        const auto& graph = result.functions.front();
+        const bool has_body = std::any_of(graph.edges.begin(), graph.edges.end(),
+            [](const FlowEdge& edge) { return edge.kind == FlowEdgeKind::LoopBody; });
+        const bool has_exit = std::any_of(graph.edges.begin(), graph.edges.end(),
+            [](const FlowEdge& edge) { return edge.kind == FlowEdgeKind::LoopExit; });
+        flow_require(has_body && !has_exit,
+            "B13A06 known-true condition must keep LoopBody and prune LoopExit");
+    }, passed, failed);
+
+    flow_case("B13A07_unary_not_propagates_known_boolean", [&] {
+        const auto parsed = parse_source(
+            "function Main() returns int { if (!false) { return 1; } else { return 2; } }");
+        flow_require(parsed.succeeded(), "B13A07 source should parse");
+        const auto result = analyze_control_flow(parsed.unit);
+        flow_require(result.succeeded() && result.functions.size() == 1U,
+            "B13A07 analysis should succeed");
+        const auto& graph = result.functions.front();
+        const bool has_true = std::any_of(graph.edges.begin(), graph.edges.end(),
+            [](const FlowEdge& edge) { return edge.kind == FlowEdgeKind::IfTrue; });
+        const bool has_false = std::any_of(graph.edges.begin(), graph.edges.end(),
+            [](const FlowEdge& edge) { return edge.kind == FlowEdgeKind::IfFalse; });
+        flow_require(has_true && !has_false,
+            "B13A07 logical negation of false must propagate known true to statement CFG");
+    }, passed, failed);
+
+    flow_case("B13A11_dynamic_and_constant_false_propagates_result", [&] {
+        const auto parsed = parse_source(
+            "function Main(bool flag) returns int { "
+            "if (flag && false) { return 1; } else { return 2; } }");
+        flow_require(parsed.succeeded(), "B13A11 source should parse");
+        const auto result = analyze_control_flow(parsed.unit);
+        flow_require(result.succeeded() && result.functions.size() == 1U,
+            "B13A11 analysis should succeed");
+        const auto& graph = result.functions.front();
+        const bool has_true = std::any_of(graph.edges.begin(), graph.edges.end(),
+            [](const FlowEdge& edge) { return edge.kind == FlowEdgeKind::IfTrue; });
+        const bool has_false = std::any_of(graph.edges.begin(), graph.edges.end(),
+            [](const FlowEdge& edge) { return edge.kind == FlowEdgeKind::IfFalse; });
+        flow_require(!has_true && has_false,
+            "B13A11 dynamic && constant-false must have a known-false merged result");
+    }, passed, failed);
+
+    flow_case("B13A12_dynamic_or_constant_true_propagates_result", [&] {
+        const auto parsed = parse_source(
+            "function Main(bool flag) returns int { "
+            "if (flag || true) { return 1; } else { return 2; } }");
+        flow_require(parsed.succeeded(), "B13A12 source should parse");
+        const auto result = analyze_control_flow(parsed.unit);
+        flow_require(result.succeeded() && result.functions.size() == 1U,
+            "B13A12 analysis should succeed");
+        const auto& graph = result.functions.front();
+        const bool has_true = std::any_of(graph.edges.begin(), graph.edges.end(),
+            [](const FlowEdge& edge) { return edge.kind == FlowEdgeKind::IfTrue; });
+        const bool has_false = std::any_of(graph.edges.begin(), graph.edges.end(),
+            [](const FlowEdge& edge) { return edge.kind == FlowEdgeKind::IfFalse; });
+        flow_require(has_true && !has_false,
+            "B13A12 dynamic || constant-true must have a known-true merged result");
     }, passed, failed);
 
 }

@@ -135,7 +135,9 @@ public:
 
     bool run(NativeFunctionCodeArtifact& artifact, std::vector<Diagnostic>& diagnostics,
              std::vector<X64FlowEmitterAnchor>& flow_anchors,
-             std::vector<X64FlowBranchAnchor>& flow_branch_anchors) {
+             std::vector<X64FlowBranchAnchor>& flow_branch_anchors,
+             std::vector<X64ExpressionBranchAnchor>& flow_expression_branch_anchors,
+             std::vector<X64ExpressionEdgeOccupancyCapture>& flow_expression_edge_occupancy_captures) {
         diagnostics_ = &diagnostics;
         if (!supported_function_signature()) return false;
         if (!function_.body) {
@@ -152,6 +154,7 @@ public:
         if (!prepare_flow_binding_lookup()) return false;
         if (!prepare_flow_emitter_anchor_lookup()) return false;
         if (!prepare_flow_branch_anchor_lookup()) return false;
+        if (!prepare_flow_expression_branch_anchor_lookup()) return false;
         if ((options_.validate_n113_flow_action_anchors ||
              options_.validate_n113_flow_action_locations ||
              options_.validate_n113_flow_operation_locations ||
@@ -300,6 +303,8 @@ public:
             !audit_n113_flow_operation_operand_ownership_plan(flow_anchors)) return false;
         if (options_.audit_n113_flow_edge_bundle_eligibility &&
             !audit_n113_flow_edge_bundle_eligibility()) return false;
+        if (!finalize_flow_expression_branch_anchors(flow_expression_branch_anchors)) return false;
+        if (!finalize_flow_expression_edge_occupancy_captures(flow_expression_edge_occupancy_captures)) return false;
 
         if (prologue_end_offset_ == 0U || prologue_end_offset_ > 255U) {
             add_diag(*diagnostics_, "XN88C0001", "Win64 prologue exceeds the UNWIND_INFO v1 byte-sized prologue limit", function_.span);
@@ -428,6 +433,12 @@ private:
     std::map<std::pair<FlowControlStatementId, FlowEdgeKind>, std::vector<const FlowEdge*>> flow_branch_edge_candidates_;
     std::set<FlowEdgeId> recorded_flow_edge_ids_;
     std::vector<X64FlowBranchAnchor> emitted_flow_branch_anchors_;
+    std::unordered_map<const Expression*, FlowExpressionId> flow_expression_ids_by_ast_;
+    std::map<std::pair<FlowExpressionId, FlowEdgeKind>, const FlowEdge*> flow_expression_edge_candidates_;
+    std::set<FlowEdgeId> recorded_flow_expression_edge_ids_;
+    std::vector<X64ExpressionBranchAnchor> emitted_flow_expression_branch_anchors_;
+    std::set<FlowEdgeId> recorded_flow_expression_occupancy_edge_ids_;
+    std::vector<X64ExpressionEdgeOccupancyCapture> emitted_flow_expression_edge_occupancy_captures_;
     std::map<std::size_t, NativeRegisterLocation> local_register_locations_;
     NativeRegisterVariableHomePlan flow_home_plan_;
     NativeRegisterAllocationResult persistent_register_allocation_;
@@ -687,6 +698,10 @@ private:
         }
         flow_branch_edge_candidates_.clear();
         for (const auto& edge : flow_function_->edges) {
+            // Expression Micro-CFG edges have their own anchor domain. B13-B
+            // will bind them to X64ExpressionBranchAnchor; they must never be
+            // mistaken for statement/loop edge-bundle candidates here.
+            if (edge.domain != FlowEdgeDomain::Statement) continue;
             switch (edge.kind) {
             case FlowEdgeKind::IfTrue:
             case FlowEdgeKind::IfFalse:
@@ -712,6 +727,10 @@ private:
             case FlowEdgeKind::ForEachBody:
             case FlowEdgeKind::ForEachExit:
             case FlowEdgeKind::ForEachBack:
+            case FlowEdgeKind::ExpressionEvaluateRhs:
+            case FlowEdgeKind::ExpressionShortCircuit:
+            case FlowEdgeKind::ExpressionRhsMerge:
+            case FlowEdgeKind::ExpressionShortMerge:
                 break;
             }
         }
@@ -722,6 +741,329 @@ private:
                 return false;
             }
         }
+        return true;
+    }
+
+    bool prepare_flow_expression_branch_anchor_lookup() {
+        if (flow_function_ == nullptr) return false;
+        flow_expression_ids_by_ast_.clear();
+        flow_expression_edge_candidates_.clear();
+        recorded_flow_expression_edge_ids_.clear();
+        for (const auto& expression : flow_function_->expression_controls) {
+            if (expression.id == InvalidFlowExpressionId || expression.ast_expression == nullptr ||
+                expression.kind != ExprKind::Binary ||
+                (expression.operator_text != "&&" && expression.operator_text != "||") ||
+                expression.ast_expression->kind != expression.kind ||
+                expression.ast_expression->text != expression.operator_text ||
+                expression.ast_expression->children.size() != 2U ||
+                !expression.ast_expression->children[0] || !expression.ast_expression->children[1] ||
+                expression.ast_expression->span.start.byte_offset != expression.span.start.byte_offset ||
+                expression.ast_expression->span.end.byte_offset != expression.span.end.byte_offset ||
+                !flow_expression_ids_by_ast_.emplace(expression.ast_expression, expression.id).second) {
+                add_diag(*diagnostics_, "XN114B0001",
+                    "logical-expression Flow identity is missing, duplicated, or not bound to its exact AST node",
+                    expression.span);
+                return false;
+            }
+        }
+        std::map<FlowExpressionId, const Expression*> ast_by_expression_id;
+        for (const auto& item : flow_expression_ids_by_ast_)
+            ast_by_expression_id.emplace(item.second, item.first);
+        std::map<FlowExpressionId, std::set<FlowEdgeKind>> edge_kinds;
+        for (const auto& edge : flow_function_->edges) {
+            if (edge.domain != FlowEdgeDomain::Expression) continue;
+            if (ast_by_expression_id.find(edge.expression_id) == ast_by_expression_id.end()) {
+                add_diag(*diagnostics_, "XN114B0002",
+                    "Expression edge references an unknown or unbound logical AST node", edge.span);
+                return false;
+            }
+            const bool supported_kind = edge.kind == FlowEdgeKind::ExpressionEvaluateRhs ||
+                edge.kind == FlowEdgeKind::ExpressionShortCircuit ||
+                edge.kind == FlowEdgeKind::ExpressionRhsMerge ||
+                edge.kind == FlowEdgeKind::ExpressionShortMerge;
+            if (!supported_kind || edge.expression_id == InvalidFlowExpressionId ||
+                !edge.machine_emission_required ||
+                !flow_expression_edge_candidates_.emplace(
+                    std::make_pair(edge.expression_id, edge.kind), &edge).second) {
+                add_diag(*diagnostics_, "XN114B0003",
+                    "Expression edge is unsupported, duplicated, or lacks a machine-emission obligation", edge.span);
+                return false;
+            }
+            edge_kinds[edge.expression_id].insert(edge.kind);
+        }
+        if (edge_kinds.size() != flow_function_->expression_controls.size()) {
+            add_diag(*diagnostics_, "XN114B0004",
+                "logical AST expression count does not match the Expression-edge identity groups", function_.span);
+            return false;
+        }
+        for (const auto& control : flow_function_->expression_controls) {
+            const auto found = edge_kinds.find(control.id);
+            if (found == edge_kinds.end() || found->second.size() != 4U ||
+                found->second.find(FlowEdgeKind::ExpressionEvaluateRhs) == found->second.end() ||
+                found->second.find(FlowEdgeKind::ExpressionShortCircuit) == found->second.end() ||
+                found->second.find(FlowEdgeKind::ExpressionRhsMerge) == found->second.end() ||
+                found->second.find(FlowEdgeKind::ExpressionShortMerge) == found->second.end()) {
+                add_diag(*diagnostics_, "XN114B0005",
+                    "logical expression does not have exactly four distinct semantic Flow edges", control.span);
+                return false;
+            }
+            const auto* rhs = flow_expression_edge_candidates_.at({control.id, FlowEdgeKind::ExpressionEvaluateRhs});
+            const auto* short_edge = flow_expression_edge_candidates_.at({control.id, FlowEdgeKind::ExpressionShortCircuit});
+            const auto* rhs_merge = flow_expression_edge_candidates_.at({control.id, FlowEdgeKind::ExpressionRhsMerge});
+            const auto* short_merge = flow_expression_edge_candidates_.at({control.id, FlowEdgeKind::ExpressionShortMerge});
+            if (rhs == nullptr || short_edge == nullptr || rhs_merge == nullptr || short_merge == nullptr ||
+                rhs->from_block_id != short_edge->from_block_id ||
+                rhs->to_block_id == short_edge->to_block_id ||
+                rhs_merge->to_block_id != short_merge->to_block_id ||
+                !rhs_merge->analysis_feasible || !short_merge->analysis_feasible) {
+                add_diag(*diagnostics_, "XN114B0006",
+                    "logical expression Flow edges do not form the expected conditional split and merge", control.span);
+                return false;
+            }
+        }
+        return true;
+    }
+
+    bool record_flow_expression_edge_occupancy_capture(
+        const Expression& expression, FlowEdgeKind edge_kind, X64ExpressionEdgeCaptureSite capture_site) {
+        if (!diagnostics_->empty()) return false;
+        const auto expression_id = flow_expression_ids_by_ast_.find(&expression);
+        if (expression_id == flow_expression_ids_by_ast_.end()) {
+            add_diag(*diagnostics_, "XN114O0001",
+                "occupancy capture has no exact FlowExpressionId-to-AST binding", expression.span);
+            return false;
+        }
+        const auto edge_it = flow_expression_edge_candidates_.find({expression_id->second, edge_kind});
+        if (edge_it == flow_expression_edge_candidates_.end() || edge_it->second == nullptr) {
+            add_diag(*diagnostics_, "XN114O0002",
+                "occupancy capture is missing its required Expression Flow edge", expression.span);
+            return false;
+        }
+        const FlowEdge& edge = *edge_it->second;
+        const X64ExpressionEdgeCaptureSite expected_site =
+            (edge_kind == FlowEdgeKind::ExpressionEvaluateRhs ||
+             edge_kind == FlowEdgeKind::ExpressionShortCircuit)
+                ? X64ExpressionEdgeCaptureSite::AfterConditionalJccBeforeRhs
+                : (edge_kind == FlowEdgeKind::ExpressionRhsMerge
+                    ? X64ExpressionEdgeCaptureSite::AfterRhsNormalizeBeforeMergeJump
+                    : X64ExpressionEdgeCaptureSite::AfterShortResultBeforeFallthrough);
+        if (capture_site != expected_site || !edge.machine_emission_required ||
+            !recorded_flow_expression_occupancy_edge_ids_.insert(edge.id).second) {
+            add_diag(*diagnostics_, "XN114O0003",
+                "occupancy capture site is inconsistent or an Expression Flow edge was captured more than once",
+                edge.span);
+            return false;
+        }
+        if (code_.size() > std::numeric_limits<std::uint32_t>::max() ||
+            active_expression_gp_registers_.size() > std::numeric_limits<std::uint32_t>::max() ||
+            active_expression_xmm_registers_.size() > std::numeric_limits<std::uint32_t>::max()) {
+            add_diag(*diagnostics_, "XN114O0004",
+                "occupancy capture exceeds the 32-bit code/depth format", edge.span);
+            return false;
+        }
+        const auto make_canonical = [](const std::vector<std::uint8_t>& stack,
+                                       std::vector<std::uint8_t>& canonical,
+                                       const std::uint8_t register_limit) -> bool {
+            if (std::any_of(stack.begin(), stack.end(), [register_limit](std::uint8_t value) {
+                    return value >= register_limit;
+                })) return false;
+            canonical = stack;
+            std::sort(canonical.begin(), canonical.end());
+            const auto unique_end = std::unique(canonical.begin(), canonical.end());
+            if (unique_end != canonical.end()) return false;
+            return true;
+        };
+        X64ExpressionEdgeOccupancyCapture capture;
+        capture.function_index = function_index_;
+        capture.expression_id = expression_id->second;
+        capture.edge_id = edge.id;
+        capture.from_block_id = edge.from_block_id;
+        capture.to_block_id = edge.to_block_id;
+        capture.edge_kind = edge.kind;
+        capture.capture_site = capture_site;
+        capture.original_code_offset = static_cast<std::uint32_t>(code_.size());
+        capture.code_offset = capture.original_code_offset;
+        capture.gp_stack_order = active_expression_gp_registers_;
+        capture.xmm_stack_order = active_expression_xmm_registers_;
+        if (!make_canonical(capture.gp_stack_order, capture.gp_occupancy, 16U) ||
+            !make_canonical(capture.xmm_stack_order, capture.xmm_occupancy, 16U)) {
+            add_diag(*diagnostics_, "XN114O0005",
+                "active Expression register stack contains an invalid or duplicate physical register", edge.span);
+            return false;
+        }
+        capture.gp_depth = static_cast<std::uint32_t>(capture.gp_stack_order.size());
+        capture.xmm_depth = static_cast<std::uint32_t>(capture.xmm_stack_order.size());
+        capture.capture_complete = true;
+        emitted_flow_expression_edge_occupancy_captures_.push_back(std::move(capture));
+        return true;
+    }
+
+    bool rebase_flow_expression_edge_occupancy_captures(
+        std::uint32_t source_code_size, std::uint32_t final_code_size,
+        const std::vector<std::pair<std::uint32_t, std::uint32_t>>& adjustments,
+        const char* stage_name) {
+        for (auto& capture : emitted_flow_expression_edge_occupancy_captures_) {
+            const auto rebased = rebase_x64_expression_edge_occupancy_offset_before(
+                capture.code_offset, source_code_size, adjustments, final_code_size);
+            if (!rebased.succeeded) {
+                add_diag(*diagnostics_, "XN114O0006",
+                    std::string("checked Expression occupancy ") + stage_name +
+                    " rebasing failed: " + rebased.diagnostic, function_.span);
+                return false;
+            }
+            capture.code_offset = rebased.mapped_offset;
+        }
+        return true;
+    }
+
+    bool finalize_flow_expression_edge_occupancy_captures(
+        std::vector<X64ExpressionEdgeOccupancyCapture>& output) {
+        if (code_.size() > std::numeric_limits<std::uint32_t>::max()) {
+            add_diag(*diagnostics_, "XN114O0007",
+                "function code size exceeds the Expression occupancy 32-bit format", function_.span);
+            return false;
+        }
+        for (const auto& candidate : flow_expression_edge_candidates_) {
+            if (candidate.second == nullptr ||
+                recorded_flow_expression_occupancy_edge_ids_.find(candidate.second->id) ==
+                    recorded_flow_expression_occupancy_edge_ids_.end()) {
+                add_diag(*diagnostics_, "XN114O0008",
+                    "a required Expression CFG edge has no completed occupancy capture",
+                    candidate.second == nullptr ? function_.span : candidate.second->span);
+                return false;
+            }
+        }
+        const auto validation = validate_x64_expression_edge_occupancy_captures(
+            code_, flow_function_->expression_controls, flow_function_->edges,
+            emitted_flow_expression_branch_anchors_,
+            emitted_flow_expression_edge_occupancy_captures_, function_index_);
+        if (!validation.succeeded) {
+            const std::string detail = validation.diagnostics.empty()
+                ? "unknown Expression occupancy validation failure" : validation.diagnostics.front();
+            add_diag(*diagnostics_, "XN114O0009", detail, function_.span);
+            return false;
+        }
+        output.insert(output.end(), emitted_flow_expression_edge_occupancy_captures_.begin(),
+                      emitted_flow_expression_edge_occupancy_captures_.end());
+        return true;
+    }
+
+    bool record_flow_expression_branch_anchor(const Expression& expression,
+                                               FlowEdgeKind edge_kind,
+                                               X64ExpressionBranchEncoding encoding,
+                                               bool conditional_taken,
+                                               std::size_t instruction_offset,
+                                               std::size_t displacement_offset,
+                                               std::size_t target_offset,
+                                               std::size_t source_block_begin_offset,
+                                               std::size_t source_block_end_offset) {
+        const auto expression_id = flow_expression_ids_by_ast_.find(&expression);
+        if (expression_id == flow_expression_ids_by_ast_.end()) {
+            add_diag(*diagnostics_, "XN114B0007",
+                "emitted logical Binary has no exact FlowExpressionId-to-AST binding", expression.span);
+            return false;
+        }
+        const auto found = flow_expression_edge_candidates_.find({expression_id->second, edge_kind});
+        if (found == flow_expression_edge_candidates_.end() || found->second == nullptr) {
+            add_diag(*diagnostics_, "XN114B0008",
+                "emitted logical Binary is missing its required Expression Flow edge", expression.span);
+            return false;
+        }
+        const FlowEdge& edge = *found->second;
+        if (!recorded_flow_expression_edge_ids_.insert(edge.id).second) {
+            add_diag(*diagnostics_, "XN114B0009",
+                "Expression Flow edge was mapped to machine code more than once", edge.span);
+            return false;
+        }
+        const auto fits = [](std::size_t value) {
+            return value <= std::numeric_limits<std::uint32_t>::max();
+        };
+        if (!fits(instruction_offset) || !fits(target_offset) || !fits(source_block_begin_offset) ||
+            !fits(source_block_end_offset) ||
+            (encoding != X64ExpressionBranchEncoding::Fallthrough && !fits(displacement_offset)) ||
+            source_block_begin_offset > source_block_end_offset) {
+            add_diag(*diagnostics_, "XN114B000A",
+                "Expression branch anchor exceeds the 32-bit code-offset format or has inverted source bounds",
+                edge.span);
+            return false;
+        }
+        emitted_flow_expression_branch_anchors_.push_back(X64ExpressionBranchAnchor{
+            function_index_, expression_id->second, edge.id, edge.from_block_id, edge.to_block_id,
+            edge.kind, encoding, conditional_taken,
+            static_cast<std::uint32_t>(instruction_offset),
+            encoding == X64ExpressionBranchEncoding::Fallthrough
+                ? InvalidNativeFlowOperationIndex : static_cast<std::uint32_t>(displacement_offset),
+            static_cast<std::uint32_t>(target_offset),
+            static_cast<std::uint32_t>(source_block_begin_offset),
+            static_cast<std::uint32_t>(source_block_end_offset), 0U});
+        return true;
+    }
+
+    void shift_expression_branch_anchors_for_prefix_insertion(std::size_t insertion,
+                                                               std::size_t byte_count) {
+        const auto shift = [insertion, byte_count](std::uint32_t& offset) {
+            if (offset >= insertion) offset = static_cast<std::uint32_t>(offset + byte_count);
+        };
+        for (auto& anchor : emitted_flow_expression_branch_anchors_) {
+            shift(anchor.instruction_offset);
+            if (anchor.displacement_offset != InvalidNativeFlowOperationIndex) shift(anchor.displacement_offset);
+            shift(anchor.target_offset);
+            shift(anchor.source_block_begin_offset);
+            shift(anchor.source_block_end_offset);
+        }
+    }
+
+    void shift_expression_branch_anchors_for_transfer_insertions(
+        const std::vector<NativeX64CodeInsertionAdjustment>& adjustments) {
+        const auto before = [&adjustments](std::uint32_t offset) {
+            std::uint64_t mapped = offset;
+            for (const auto& item : adjustments) if (item.original_offset < offset) mapped += item.inserted_bytes;
+            return static_cast<std::uint32_t>(std::min<std::uint64_t>(mapped, std::numeric_limits<std::uint32_t>::max()));
+        };
+        const auto after = [&adjustments](std::uint32_t offset) {
+            std::uint64_t mapped = offset;
+            for (const auto& item : adjustments) if (item.original_offset <= offset) mapped += item.inserted_bytes;
+            return static_cast<std::uint32_t>(std::min<std::uint64_t>(mapped, std::numeric_limits<std::uint32_t>::max()));
+        };
+        for (auto& anchor : emitted_flow_expression_branch_anchors_) {
+            anchor.instruction_offset = after(anchor.instruction_offset);
+            if (anchor.displacement_offset != InvalidNativeFlowOperationIndex)
+                anchor.displacement_offset = after(anchor.displacement_offset);
+            anchor.target_offset = before(anchor.target_offset);
+            anchor.source_block_begin_offset = before(anchor.source_block_begin_offset);
+            anchor.source_block_end_offset = before(anchor.source_block_end_offset);
+        }
+    }
+
+    bool finalize_flow_expression_branch_anchors(
+        std::vector<X64ExpressionBranchAnchor>& output) {
+        if (code_.size() > std::numeric_limits<std::uint32_t>::max()) {
+            add_diag(*diagnostics_, "XN114B000B",
+                "function code size exceeds the Expression branch-anchor 32-bit format", function_.span);
+            return false;
+        }
+        for (const auto& candidate : flow_expression_edge_candidates_) {
+            if (candidate.second == nullptr ||
+                recorded_flow_expression_edge_ids_.find(candidate.second->id) == recorded_flow_expression_edge_ids_.end()) {
+                add_diag(*diagnostics_, "XN114B000C",
+                    "a required Expression CFG edge was not mapped to a machine-code anchor",
+                    candidate.second == nullptr ? function_.span : candidate.second->span);
+                return false;
+            }
+        }
+        for (auto& anchor : emitted_flow_expression_branch_anchors_)
+            anchor.function_code_size = static_cast<std::uint32_t>(code_.size());
+        const auto validation = validate_x64_expression_branch_anchors(
+            code_, flow_function_->expression_controls, flow_function_->edges,
+            emitted_flow_expression_branch_anchors_, function_index_);
+        if (!validation.succeeded) {
+            const std::string detail = validation.diagnostics.empty()
+                ? "unknown Expression branch-anchor validation failure" : validation.diagnostics.front();
+            add_diag(*diagnostics_, "XN114B000D", detail, function_.span);
+            return false;
+        }
+        output.insert(output.end(), emitted_flow_expression_branch_anchors_.begin(),
+                      emitted_flow_expression_branch_anchors_.end());
         return true;
     }
 
@@ -2030,6 +2372,16 @@ private:
             return false;
         }
 
+        shift_expression_branch_anchors_for_transfer_insertions(insertion.offset_adjustments);
+        std::vector<std::pair<std::uint32_t, std::uint32_t>> occupancy_adjustments;
+        occupancy_adjustments.reserve(insertion.offset_adjustments.size());
+        for (const auto& adjustment : insertion.offset_adjustments)
+            occupancy_adjustments.emplace_back(adjustment.original_offset, adjustment.inserted_bytes);
+        if (code_.size() > std::numeric_limits<std::uint32_t>::max() ||
+            insertion.code.size() > std::numeric_limits<std::uint32_t>::max() ||
+            !rebase_flow_expression_edge_occupancy_captures(
+                static_cast<std::uint32_t>(code_.size()), static_cast<std::uint32_t>(insertion.code.size()),
+                occupancy_adjustments, "G2 BEFORE")) return false;
         code_ = insertion.code;
         relative_branch_fixups_ = insertion.relative_branch_fixups;
         relocations_ = insertion.external_relocations;
@@ -2661,6 +3013,18 @@ private:
             if (anchor.target_offset >= insertion)
                 anchor.target_offset += static_cast<std::uint32_t>(shift);
         }
+        shift_expression_branch_anchors_for_prefix_insertion(insertion, shift);
+        if (code_.size() > std::numeric_limits<std::uint32_t>::max() ||
+            code_.size() + shift > std::numeric_limits<std::uint32_t>::max()) {
+            add_diag(*diagnostics_, "XN114O0010",
+                "stack-probe prefix would exceed the Expression occupancy 32-bit offset format", function_.span);
+            return false;
+        }
+        if (!rebase_flow_expression_edge_occupancy_captures(
+                static_cast<std::uint32_t>(code_.size()),
+                static_cast<std::uint32_t>(code_.size() + shift),
+                {{static_cast<std::uint32_t>(insertion), static_cast<std::uint32_t>(shift)}},
+                "Stack Probe Prefix BEFORE")) return false;
 
         code_.insert(code_.begin() + static_cast<std::ptrdiff_t>(insertion),
                      probe_code.begin(), probe_code.end());
@@ -3461,17 +3825,50 @@ private:
         const std::string& operation = expression.text;
         if (operation == "&&" || operation == "||") {
             compile_expression(*expression.children[0]);
+            if (!diagnostics_->empty()) return;
             code_.insert(code_.end(), {0x48U, 0x85U, 0xC0U});
             const std::size_t short_jump = emit_jump(operation == "&&" ? 0x84U : 0x85U);
+            if (!record_flow_expression_edge_occupancy_capture(
+                    expression, FlowEdgeKind::ExpressionEvaluateRhs,
+                    X64ExpressionEdgeCaptureSite::AfterConditionalJccBeforeRhs) ||
+                !record_flow_expression_edge_occupancy_capture(
+                    expression, FlowEdgeKind::ExpressionShortCircuit,
+                    X64ExpressionEdgeCaptureSite::AfterConditionalJccBeforeRhs)) return;
+            const std::size_t rhs_entry = code_.size();
             compile_expression(*expression.children[1]);
+            if (!diagnostics_->empty()) return;
             code_.insert(code_.end(), {0x48U, 0x85U, 0xC0U, 0x0FU, 0x95U, 0xC0U, 0x0FU, 0xB6U, 0xC0U});
+            if (!record_flow_expression_edge_occupancy_capture(
+                    expression, FlowEdgeKind::ExpressionRhsMerge,
+                    X64ExpressionEdgeCaptureSite::AfterRhsNormalizeBeforeMergeJump)) return;
             const std::size_t end_jump = emit_jump();
+            const std::size_t rhs_exit = code_.size();
             const std::size_t short_label = code_.size();
             if (operation == "&&") emit_xor_eax_eax();
             else emit_mov_rax_immediate(1U);
+            if (!record_flow_expression_edge_occupancy_capture(
+                    expression, FlowEdgeKind::ExpressionShortMerge,
+                    X64ExpressionEdgeCaptureSite::AfterShortResultBeforeFallthrough)) return;
             const std::size_t end_label = code_.size();
-            if (!patch_rel32(short_jump, short_label) || !patch_rel32(end_jump, end_label))
+            if (!patch_rel32(short_jump, short_label) || !patch_rel32(end_jump, end_label)) {
                 add_diag(*diagnostics_, "XN48C001C", "logical expression branch exceeds rel32 range", expression.span);
+                return;
+            }
+            const std::size_t jcc_instruction = short_jump - 2U;
+            const std::size_t jcc_end = short_jump + 4U;
+            if (!record_flow_expression_branch_anchor(expression, FlowEdgeKind::ExpressionEvaluateRhs,
+                    X64ExpressionBranchEncoding::ConditionalRel32, false,
+                    jcc_instruction, short_jump, jcc_end, jcc_instruction, jcc_end) ||
+                !record_flow_expression_branch_anchor(expression, FlowEdgeKind::ExpressionShortCircuit,
+                    X64ExpressionBranchEncoding::ConditionalRel32, true,
+                    jcc_instruction, short_jump, short_label, jcc_instruction, jcc_end) ||
+                !record_flow_expression_branch_anchor(expression, FlowEdgeKind::ExpressionRhsMerge,
+                    X64ExpressionBranchEncoding::UnconditionalRel32, false,
+                    end_jump - 1U, end_jump, end_label, rhs_entry, rhs_exit) ||
+                !record_flow_expression_branch_anchor(expression, FlowEdgeKind::ExpressionShortMerge,
+                    X64ExpressionBranchEncoding::Fallthrough, false,
+                    end_label, std::numeric_limits<std::size_t>::max(), end_label,
+                    short_label, end_label)) return;
             return;
         }
         const std::string left_type = expression_type(*expression.children[0]);
@@ -3881,7 +4278,368 @@ std::vector<NativeSymbolDeclaration> make_declarations(const CompilationUnit& un
     return declarations;
 }
 
-} // namespace
+ } // namespace
+
+X64ExpressionEdgeOccupancyOffsetRebaseResult rebase_x64_expression_edge_occupancy_offset_before(
+    std::uint32_t source_offset, std::uint32_t source_code_size,
+    const std::vector<std::pair<std::uint32_t, std::uint32_t>>& adjustments,
+    std::uint32_t final_code_size) {
+    X64ExpressionEdgeOccupancyOffsetRebaseResult result;
+    const auto fail = [&result](const std::string& message) {
+        result.diagnostic = message;
+        return result;
+    };
+    if (source_offset > source_code_size)
+        return fail("source capture boundary is outside the pre-insertion function");
+    std::uint64_t total_inserted = 0U;
+    std::uint32_t previous_offset = 0U;
+    bool first = true;
+    for (const auto& adjustment : adjustments) {
+        if (adjustment.first > source_code_size || adjustment.second == 0U ||
+            (!first && adjustment.first <= previous_offset))
+            return fail("insertion adjustments are out of range, zero-sized, duplicated, or unsorted");
+        first = false;
+        previous_offset = adjustment.first;
+        total_inserted += adjustment.second;
+        if (total_inserted > std::numeric_limits<std::uint32_t>::max())
+            return fail("total inserted byte count exceeds the 32-bit function format");
+    }
+    const std::uint64_t expected_final_size = static_cast<std::uint64_t>(source_code_size) + total_inserted;
+    if (expected_final_size > std::numeric_limits<std::uint32_t>::max() ||
+        expected_final_size != final_code_size)
+        return fail("insertion adjustments do not compose to the supplied final function size");
+    std::uint64_t mapped = source_offset;
+    for (const auto& adjustment : adjustments) {
+        // BEFORE affinity: insertion at the same boundary remains after capture.
+        if (adjustment.first < source_offset) mapped += adjustment.second;
+        if (mapped > std::numeric_limits<std::uint32_t>::max())
+            return fail("rebased capture boundary overflows the 32-bit function format");
+    }
+    if (mapped > final_code_size)
+        return fail("rebased capture boundary is outside the final function");
+    result.succeeded = true;
+    result.mapped_offset = static_cast<std::uint32_t>(mapped);
+    return result;
+}
+
+X64ExpressionBranchAnchorValidationResult validate_x64_expression_branch_anchors(
+    const std::vector<std::uint8_t>& function_code,
+    const std::vector<FlowExpressionControl>& expression_controls,
+    const std::vector<FlowEdge>& edges,
+    const std::vector<X64ExpressionBranchAnchor>& anchors,
+    std::size_t function_index) {
+    X64ExpressionBranchAnchorValidationResult result;
+    const auto fail = [&result](const std::string& message) {
+        result.diagnostics.push_back(message);
+        return result;
+    };
+    if (function_code.empty()) return fail("Expression branch validation received an empty function body");
+    if (function_code.size() > std::numeric_limits<std::uint32_t>::max())
+        return fail("Expression branch validation exceeds the 32-bit code-offset format");
+
+    std::map<FlowExpressionId, const FlowExpressionControl*> controls;
+    std::map<FlowEdgeId, const FlowEdge*> expression_edges_by_id;
+    std::map<std::pair<FlowExpressionId, FlowEdgeKind>, const FlowEdge*> edge_by_expression_kind;
+    for (const auto& control : expression_controls) {
+        if (control.id == InvalidFlowExpressionId || control.ast_expression == nullptr ||
+            control.kind != ExprKind::Binary ||
+            (control.operator_text != "&&" && control.operator_text != "||") ||
+            control.ast_expression->kind != control.kind ||
+            control.ast_expression->text != control.operator_text ||
+            !controls.emplace(control.id, &control).second) {
+            return fail("Expression control identity is invalid, duplicated, or missing its exact AST binding");
+        }
+    }
+    for (const auto& edge : edges) {
+        if (edge.domain != FlowEdgeDomain::Expression) continue;
+        const bool supported_kind = edge.kind == FlowEdgeKind::ExpressionEvaluateRhs ||
+            edge.kind == FlowEdgeKind::ExpressionShortCircuit ||
+            edge.kind == FlowEdgeKind::ExpressionRhsMerge ||
+            edge.kind == FlowEdgeKind::ExpressionShortMerge;
+        if (!supported_kind || edge.id == InvalidFlowEdgeId ||
+            controls.find(edge.expression_id) == controls.end() || !edge.machine_emission_required ||
+            !expression_edges_by_id.emplace(edge.id, &edge).second ||
+            !edge_by_expression_kind.emplace(std::make_pair(edge.expression_id, edge.kind), &edge).second) {
+            return fail("Expression Edge identity is invalid, duplicated, unsupported, or unbound");
+        }
+    }
+    if (expression_edges_by_id.size() != controls.size() * 4U || anchors.size() != expression_edges_by_id.size())
+        return fail("Expression Edge/Anchor cardinality is incomplete or contains extras");
+
+    std::map<FlowEdgeId, const X64ExpressionBranchAnchor*> anchors_by_edge;
+    std::map<FlowExpressionId, std::map<FlowEdgeKind, const X64ExpressionBranchAnchor*>> anchor_groups;
+    for (const auto& anchor : anchors) {
+        const auto edge_it = expression_edges_by_id.find(anchor.edge_id);
+        if (anchor.function_index != function_index || anchor.expression_id == InvalidFlowExpressionId ||
+            edge_it == expression_edges_by_id.end() ||
+            !anchors_by_edge.emplace(anchor.edge_id, &anchor).second) {
+            return fail("Expression Anchor has an invalid function/edge identity or is duplicated");
+        }
+        const FlowEdge& edge = *edge_it->second;
+        if (anchor.expression_id != edge.expression_id || anchor.edge_kind != edge.kind ||
+            anchor.from_block_id != edge.from_block_id || anchor.to_block_id != edge.to_block_id ||
+            anchor.function_code_size != function_code.size() ||
+            anchor.instruction_offset > function_code.size() || anchor.target_offset > function_code.size() ||
+            anchor.source_block_begin_offset > anchor.source_block_end_offset ||
+            anchor.source_block_end_offset > function_code.size() ||
+            (anchor.encoding != X64ExpressionBranchEncoding::Fallthrough &&
+             (anchor.displacement_offset == InvalidNativeFlowOperationIndex ||
+              static_cast<std::uint64_t>(anchor.displacement_offset) + 4U > function_code.size())) ||
+            (anchor.encoding == X64ExpressionBranchEncoding::Fallthrough &&
+             anchor.displacement_offset != InvalidNativeFlowOperationIndex)) {
+            return fail("Expression Anchor metadata or final code offsets disagree with its Flow Edge");
+        }
+        if (!anchor_groups[anchor.expression_id].emplace(anchor.edge_kind, &anchor).second)
+            return fail("Expression Anchor group contains a duplicate semantic edge kind");
+    }
+
+    const auto decode_rel32 = [&function_code](std::uint32_t displacement_offset,
+                                                std::uint32_t& target) -> bool {
+        if (static_cast<std::uint64_t>(displacement_offset) + 4U > function_code.size()) return false;
+        std::int32_t displacement = 0;
+        std::memcpy(&displacement, function_code.data() + displacement_offset, sizeof(displacement));
+        const std::int64_t resolved = static_cast<std::int64_t>(displacement_offset) + 4LL + displacement;
+        if (resolved < 0 || resolved > static_cast<std::int64_t>(function_code.size())) return false;
+        target = static_cast<std::uint32_t>(resolved);
+        return true;
+    };
+
+    for (const auto& control_item : controls) {
+        const FlowExpressionId expression_id = control_item.first;
+        const auto group_it = anchor_groups.find(expression_id);
+        if (group_it == anchor_groups.end() || group_it->second.size() != 4U)
+            return fail("Logical expression does not have exactly four machine branch anchors");
+        const auto get = [&group_it](FlowEdgeKind kind) -> const X64ExpressionBranchAnchor* {
+            const auto found = group_it->second.find(kind);
+            return found == group_it->second.end() ? nullptr : found->second;
+        };
+        const auto* rhs = get(FlowEdgeKind::ExpressionEvaluateRhs);
+        const auto* short_edge = get(FlowEdgeKind::ExpressionShortCircuit);
+        const auto* rhs_merge = get(FlowEdgeKind::ExpressionRhsMerge);
+        const auto* short_merge = get(FlowEdgeKind::ExpressionShortMerge);
+        if (rhs == nullptr || short_edge == nullptr || rhs_merge == nullptr || short_merge == nullptr)
+            return fail("Logical expression machine-anchor group is missing a required semantic edge");
+        if (rhs->encoding != X64ExpressionBranchEncoding::ConditionalRel32 || rhs->conditional_taken ||
+            short_edge->encoding != X64ExpressionBranchEncoding::ConditionalRel32 || !short_edge->conditional_taken ||
+            rhs->instruction_offset != short_edge->instruction_offset ||
+            rhs->displacement_offset != short_edge->displacement_offset ||
+            rhs->source_block_begin_offset != short_edge->source_block_begin_offset ||
+            rhs->source_block_end_offset != short_edge->source_block_end_offset ||
+            rhs_merge->encoding != X64ExpressionBranchEncoding::UnconditionalRel32 ||
+            rhs_merge->conditional_taken ||
+            short_merge->encoding != X64ExpressionBranchEncoding::Fallthrough || short_merge->conditional_taken) {
+            return fail("Logical expression Jcc pair or RHS/short-result merge encoding is inconsistent");
+        }
+        const auto* control = control_item.second;
+        const std::uint8_t expected_jcc = control->operator_text == "&&" ? 0x84U : 0x85U;
+        if (rhs->instruction_offset + 2U != rhs->displacement_offset ||
+            static_cast<std::uint64_t>(rhs->instruction_offset) + 6U > function_code.size() ||
+            function_code[rhs->instruction_offset] != 0x0FU ||
+            function_code[rhs->instruction_offset + 1U] != expected_jcc ||
+            rhs->target_offset != rhs->displacement_offset + 4U) {
+            return fail("Logical expression Jcc opcode, fallthrough boundary, or displacement position is invalid");
+        }
+        std::uint32_t short_target = 0U;
+        if (!decode_rel32(short_edge->displacement_offset, short_target) ||
+            short_target != short_edge->target_offset || short_target != short_merge->source_block_begin_offset) {
+            return fail("Logical expression Jcc taken rel32 does not resolve to the short-result block");
+        }
+        if (rhs_merge->instruction_offset + 1U != rhs_merge->displacement_offset ||
+            function_code[rhs_merge->instruction_offset] != 0xE9U ||
+            rhs_merge->source_block_begin_offset > rhs_merge->instruction_offset ||
+            rhs_merge->source_block_end_offset != rhs_merge->instruction_offset + 5U) {
+            return fail("Logical expression RHS-to-merge JMP opcode or source-block range is invalid");
+        }
+        std::uint32_t rhs_target = 0U;
+        if (!decode_rel32(rhs_merge->displacement_offset, rhs_target) ||
+            rhs_target != rhs_merge->target_offset || rhs_target != short_merge->target_offset ||
+            short_merge->source_block_end_offset != short_merge->target_offset ||
+            short_merge->instruction_offset != short_merge->target_offset ||
+            short_merge->source_block_begin_offset != short_edge->target_offset) {
+            return fail("Logical expression RHS/short-result merge targets or fallthrough boundaries disagree");
+        }
+        const std::size_t short_size = short_merge->source_block_end_offset - short_merge->source_block_begin_offset;
+        if (control->operator_text == "&&") {
+            if (short_size != 2U || function_code[short_merge->source_block_begin_offset] != 0x31U ||
+                function_code[short_merge->source_block_begin_offset + 1U] != 0xC0U)
+                return fail("Logical AND short-result block is not the expected false-result machine sequence");
+        } else {
+            if (short_size != 10U || function_code[short_merge->source_block_begin_offset] != 0x48U ||
+                function_code[short_merge->source_block_begin_offset + 1U] != 0xB8U)
+                return fail("Logical OR short-result block is not the expected true-result machine sequence");
+            std::uint64_t immediate = 0U;
+            std::memcpy(&immediate, function_code.data() + short_merge->source_block_begin_offset + 2U, sizeof(immediate));
+            if (immediate != 1U) return fail("Logical OR short-result immediate is not canonical true");
+        }
+    }
+    result.succeeded = true;
+    return result;
+}
+
+X64ExpressionEdgeOccupancyValidationResult validate_x64_expression_edge_occupancy_captures(
+    const std::vector<std::uint8_t>& function_code,
+    const std::vector<FlowExpressionControl>& expression_controls,
+    const std::vector<FlowEdge>& edges,
+    const std::vector<X64ExpressionBranchAnchor>& branch_anchors,
+    const std::vector<X64ExpressionEdgeOccupancyCapture>& captures,
+    std::size_t function_index) {
+    X64ExpressionEdgeOccupancyValidationResult result;
+    const auto fail = [&result](const std::string& message) {
+        result.diagnostics.push_back(message);
+        return result;
+    };
+    if (function_code.empty()) return fail("Expression occupancy validation received an empty function body");
+    if (function_code.size() > std::numeric_limits<std::uint32_t>::max())
+        return fail("Expression occupancy validation exceeds the 32-bit code-offset format");
+
+    std::map<FlowExpressionId, const FlowExpressionControl*> controls;
+    for (const auto& control : expression_controls) {
+        if (control.id == InvalidFlowExpressionId || control.ast_expression == nullptr ||
+            control.kind != ExprKind::Binary ||
+            (control.operator_text != "&&" && control.operator_text != "||") ||
+            control.ast_expression->kind != control.kind ||
+            control.ast_expression->text != control.operator_text ||
+            control.ast_expression->children.size() != 2U ||
+            !control.ast_expression->children[0] || !control.ast_expression->children[1] ||
+            !controls.emplace(control.id, &control).second)
+            return fail("Expression occupancy control identity is invalid, duplicated, or not bound to its exact AST");
+    }
+
+    std::set<FlowEdgeId> all_edge_ids;
+    std::map<FlowEdgeId, const FlowEdge*> expression_edges;
+    std::map<std::pair<FlowExpressionId, FlowEdgeKind>, const FlowEdge*> edge_groups;
+    for (const auto& edge : edges) {
+        if (edge.id == InvalidFlowEdgeId || !all_edge_ids.insert(edge.id).second)
+            return fail("Flow graph contains an invalid or duplicate FlowEdgeId");
+        if (edge.domain != FlowEdgeDomain::Expression) continue;
+        const bool supported_kind = edge.kind == FlowEdgeKind::ExpressionEvaluateRhs ||
+            edge.kind == FlowEdgeKind::ExpressionShortCircuit ||
+            edge.kind == FlowEdgeKind::ExpressionRhsMerge ||
+            edge.kind == FlowEdgeKind::ExpressionShortMerge;
+        if (!supported_kind || !edge.machine_emission_required ||
+            controls.find(edge.expression_id) == controls.end() ||
+            !expression_edges.emplace(edge.id, &edge).second ||
+            !edge_groups.emplace(std::make_pair(edge.expression_id, edge.kind), &edge).second)
+            return fail("Expression occupancy FlowEdge is unsupported, duplicated, or unbound");
+    }
+    const std::size_t expected_count = controls.size() * 4U;
+    if (expression_edges.size() != expected_count || captures.size() != expected_count ||
+        branch_anchors.size() != expected_count)
+        return fail("Expression occupancy, branch-anchor, and machine-emitted FlowEdge cardinalities differ");
+
+    std::map<FlowEdgeId, const X64ExpressionBranchAnchor*> anchors_by_edge;
+    for (const auto& anchor : branch_anchors) {
+        if (anchor.function_index != function_index ||
+            expression_edges.find(anchor.edge_id) == expression_edges.end() ||
+            !anchors_by_edge.emplace(anchor.edge_id, &anchor).second)
+            return fail("Expression branch anchor has a wrong function/edge identity or is duplicated");
+    }
+
+    std::map<FlowEdgeId, const X64ExpressionEdgeOccupancyCapture*> captures_by_edge;
+    std::map<FlowExpressionId, std::map<FlowEdgeKind, const X64ExpressionEdgeOccupancyCapture*>> capture_groups;
+    for (const auto& capture : captures) {
+        const auto edge_it = expression_edges.find(capture.edge_id);
+        if (!capture.capture_complete || capture.function_index != function_index ||
+            capture.expression_id == InvalidFlowExpressionId || edge_it == expression_edges.end() ||
+            !captures_by_edge.emplace(capture.edge_id, &capture).second)
+            return fail("Expression occupancy capture is incomplete, has a wrong function/edge identity, or is duplicated");
+        const FlowEdge& edge = *edge_it->second;
+        if (capture.expression_id != edge.expression_id || capture.edge_kind != edge.kind ||
+            capture.from_block_id != edge.from_block_id || capture.to_block_id != edge.to_block_id)
+            return fail("Expression occupancy capture identity/endpoints disagree with its FlowEdge");
+        const X64ExpressionEdgeCaptureSite expected_site =
+            (edge.kind == FlowEdgeKind::ExpressionEvaluateRhs ||
+             edge.kind == FlowEdgeKind::ExpressionShortCircuit)
+                ? X64ExpressionEdgeCaptureSite::AfterConditionalJccBeforeRhs
+                : (edge.kind == FlowEdgeKind::ExpressionRhsMerge
+                    ? X64ExpressionEdgeCaptureSite::AfterRhsNormalizeBeforeMergeJump
+                    : X64ExpressionEdgeCaptureSite::AfterShortResultBeforeFallthrough);
+        if (capture.capture_site != expected_site ||
+            capture.original_code_offset > capture.code_offset ||
+            capture.code_offset > function_code.size())
+            return fail("Expression occupancy capture site or original/final code boundary is invalid");
+        if (capture.gp_stack_order.size() > std::numeric_limits<std::uint32_t>::max() ||
+            capture.xmm_stack_order.size() > std::numeric_limits<std::uint32_t>::max() ||
+            capture.gp_depth != capture.gp_stack_order.size() ||
+            capture.xmm_depth != capture.xmm_stack_order.size())
+            return fail("Expression occupancy depth does not equal its ordered register-stack length");
+        const auto validate_stack = [](const std::vector<std::uint8_t>& stack,
+                                       const std::vector<std::uint8_t>& occupancy) -> bool {
+            if (std::any_of(stack.begin(), stack.end(), [](std::uint8_t reg) { return reg >= 16U; })) return false;
+            std::vector<std::uint8_t> canonical = stack;
+            std::sort(canonical.begin(), canonical.end());
+            if (std::adjacent_find(canonical.begin(), canonical.end()) != canonical.end()) return false;
+            return canonical == occupancy;
+        };
+        if (!validate_stack(capture.gp_stack_order, capture.gp_occupancy) ||
+            !validate_stack(capture.xmm_stack_order, capture.xmm_occupancy))
+            return fail("Expression occupancy canonical set is not sorted-unique or disagrees with its ordered stack");
+        const auto anchor_it = anchors_by_edge.find(capture.edge_id);
+        if (anchor_it == anchors_by_edge.end())
+            return fail("Expression occupancy capture has no matching machine branch anchor");
+        const X64ExpressionBranchAnchor& anchor = *anchor_it->second;
+        if (anchor.expression_id != capture.expression_id || anchor.edge_kind != capture.edge_kind ||
+            anchor.from_block_id != capture.from_block_id || anchor.to_block_id != capture.to_block_id ||
+            anchor.function_code_size != function_code.size())
+            return fail("Expression occupancy capture does not join to the matching final branch anchor");
+        if ((edge.kind == FlowEdgeKind::ExpressionEvaluateRhs && capture.code_offset != anchor.target_offset) ||
+            (edge.kind == FlowEdgeKind::ExpressionShortMerge && capture.code_offset != anchor.target_offset) ||
+            (edge.kind == FlowEdgeKind::ExpressionRhsMerge && capture.code_offset > anchor.instruction_offset))
+            return fail("Expression occupancy capture boundary disagrees with its branch-anchor seam affinity");
+        if (!capture_groups[capture.expression_id].emplace(capture.edge_kind, &capture).second)
+            return fail("Expression occupancy group contains a duplicate semantic edge kind");
+    }
+
+    for (const auto& control_item : controls) {
+        const FlowExpressionId expression_id = control_item.first;
+        const auto group_it = capture_groups.find(expression_id);
+        if (group_it == capture_groups.end() || group_it->second.size() != 4U)
+            return fail("Logical expression does not have exactly four occupancy captures");
+        const auto get = [&group_it](FlowEdgeKind kind) -> const X64ExpressionEdgeOccupancyCapture* {
+            const auto found = group_it->second.find(kind);
+            return found == group_it->second.end() ? nullptr : found->second;
+        };
+        const auto* evaluate = get(FlowEdgeKind::ExpressionEvaluateRhs);
+        const auto* short_edge = get(FlowEdgeKind::ExpressionShortCircuit);
+        const auto* rhs_merge = get(FlowEdgeKind::ExpressionRhsMerge);
+        const auto* short_merge = get(FlowEdgeKind::ExpressionShortMerge);
+        if (!evaluate || !short_edge || !rhs_merge || !short_merge)
+            return fail("Logical expression occupancy group is missing a required semantic edge");
+        if (evaluate->edge_id == short_edge->edge_id ||
+            evaluate->capture_site != short_edge->capture_site ||
+            evaluate->original_code_offset != short_edge->original_code_offset ||
+            evaluate->code_offset != short_edge->code_offset ||
+            evaluate->gp_stack_order != short_edge->gp_stack_order ||
+            evaluate->xmm_stack_order != short_edge->xmm_stack_order ||
+            evaluate->gp_occupancy != short_edge->gp_occupancy ||
+            evaluate->xmm_occupancy != short_edge->xmm_occupancy ||
+            evaluate->gp_depth != short_edge->gp_depth || evaluate->xmm_depth != short_edge->xmm_depth)
+            return fail("Conditional JCC sibling occupancy captures differ at the shared boundary");
+        if (rhs_merge->gp_stack_order != short_merge->gp_stack_order ||
+            rhs_merge->xmm_stack_order != short_merge->xmm_stack_order ||
+            rhs_merge->gp_occupancy != short_merge->gp_occupancy ||
+            rhs_merge->xmm_occupancy != short_merge->xmm_occupancy ||
+            rhs_merge->gp_depth != short_merge->gp_depth || rhs_merge->xmm_depth != short_merge->xmm_depth)
+            return fail("RHS and Short merge predecessor ordered occupancy stacks are not identical");
+        const auto get_edge = [&edge_groups, expression_id](FlowEdgeKind kind) -> const FlowEdge* {
+            const auto found = edge_groups.find({expression_id, kind});
+            return found == edge_groups.end() ? nullptr : found->second;
+        };
+        const auto* rhs_edge = get_edge(FlowEdgeKind::ExpressionEvaluateRhs);
+        const auto* short_flow_edge = get_edge(FlowEdgeKind::ExpressionShortCircuit);
+        const auto* rhs_merge_edge = get_edge(FlowEdgeKind::ExpressionRhsMerge);
+        const auto* short_merge_edge = get_edge(FlowEdgeKind::ExpressionShortMerge);
+        if (!rhs_edge || !short_flow_edge || !rhs_merge_edge || !short_merge_edge ||
+            rhs_edge->from_block_id != short_flow_edge->from_block_id ||
+            rhs_edge->to_block_id == short_flow_edge->to_block_id ||
+            rhs_merge_edge->to_block_id != short_merge_edge->to_block_id)
+            return fail("Expression occupancy records are not attached to the expected split/merge Flow topology");
+    }
+    if (captures_by_edge.size() != expression_edges.size() || anchors_by_edge.size() != expression_edges.size())
+        return fail("Expression occupancy capture or branch-anchor set contains missing/orphan records");
+    result.succeeded = true;
+    return result;
+}
 
 X64CodegenResult compile_x64_coff_object(const CompilationUnit& unit, X64CodegenOptions options) {
     X64CodegenResult result;
@@ -3948,7 +4706,8 @@ X64CodegenResult compile_x64_coff_object(const CompilationUnit& unit, X64Codegen
             &flow_allocations[flow_function_index], &native_flow.functions[flow_function_index], result.stats);
         ++flow_function_index;
         if (emitter.run(artifact, result.diagnostics, result.flow_anchors,
-                        result.flow_branch_anchors))
+                        result.flow_branch_anchors, result.flow_expression_branch_anchors,
+                        result.flow_expression_edge_occupancy_captures))
             artifacts.push_back(std::move(artifact));
     }
     if (!result.diagnostics.empty()) return result;
@@ -3961,6 +4720,19 @@ X64CodegenResult compile_x64_coff_object(const CompilationUnit& unit, X64Codegen
     std::sort(result.flow_branch_anchors.begin(), result.flow_branch_anchors.end(),
         [](const X64FlowBranchAnchor& left, const X64FlowBranchAnchor& right) {
             if (left.function_index != right.function_index) return left.function_index < right.function_index;
+            return left.edge_id < right.edge_id;
+        });
+    std::sort(result.flow_expression_branch_anchors.begin(), result.flow_expression_branch_anchors.end(),
+        [](const X64ExpressionBranchAnchor& left, const X64ExpressionBranchAnchor& right) {
+            if (left.function_index != right.function_index) return left.function_index < right.function_index;
+            if (left.expression_id != right.expression_id) return left.expression_id < right.expression_id;
+            return left.edge_id < right.edge_id;
+        });
+    std::sort(result.flow_expression_edge_occupancy_captures.begin(),
+              result.flow_expression_edge_occupancy_captures.end(),
+        [](const X64ExpressionEdgeOccupancyCapture& left, const X64ExpressionEdgeOccupancyCapture& right) {
+            if (left.function_index != right.function_index) return left.function_index < right.function_index;
+            if (left.expression_id != right.expression_id) return left.expression_id < right.expression_id;
             return left.edge_id < right.edge_id;
         });
     result.native_object = emit_native_object_sections(unit, artifacts, {},

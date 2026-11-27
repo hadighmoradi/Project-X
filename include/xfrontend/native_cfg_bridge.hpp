@@ -31,6 +31,7 @@ struct NativeRegisterFlowFunction {
     // instruction IR so older allocator aggregate layouts remain unchanged.
     std::vector<FlowControlStatement> control_statements;
     std::vector<FlowEdge> edges;
+    std::vector<FlowExpressionControl> expression_controls;
 };
 
 struct NativeRegisterFlowLoweringResult {

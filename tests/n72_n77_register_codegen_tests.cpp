@@ -85,8 +85,11 @@ void test_n73_volatile_first_allocation(std::size_t index) {
     require(result.succeeded(), "N73 volatile-first x64 allocation failed");
     require(result.stats.volatile_register_temporaries >= 1U,
             "N73 did not consume the caller-saved scratch-register pool first");
-    require(result.stats.callee_saved_gp_registers == 0U,
-            "N73 low-pressure function unexpectedly saved a nonvolatile GP register");
+    require(result.stats.native_persistent_gp_register_assignments == 1U,
+            "N73 persistent source parameter was not assigned in its nonvolatile allocation domain");
+    require(result.stats.callee_saved_gp_registers <=
+                result.stats.native_persistent_gp_register_assignments,
+            "N73 expression allocation consumed an extra nonvolatile GP register beyond the persistent domain");
     require(result.stats.native_register_values_analyzed >= 3U,
             "N73 codegen bypassed native register IR analysis");
 }
