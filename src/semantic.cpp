@@ -47,6 +47,31 @@ std::string canonical_type(const std::string& type) {
     return value;
 }
 
+std::string pointer_payload_type(const std::string& type) {
+    const std::string normalized = fold(type);
+    if (normalized.compare(0U, 11U, "borrow mut ") == 0) return type.substr(11U);
+    if (normalized.compare(0U, 7U, "borrow ") == 0) return type.substr(7U);
+    if (normalized.compare(0U, 5U, "take ") == 0 ||
+        normalized.compare(0U, 5U, "copy ") == 0) return type.substr(5U);
+    return type;
+}
+
+bool is_pointer_type(const std::string& type) {
+    const std::string payload = pointer_payload_type(type);
+    return !payload.empty() && (payload.front() == '*' || payload.back() == '*');
+}
+
+std::string pointee_type(const std::string& type) {
+    const std::string payload = pointer_payload_type(type);
+    if (!payload.empty() && payload.back() == '*') {
+        return payload.substr(0U, payload.size() - 1U);
+    }
+    if (!payload.empty() && payload.front() == '*') {
+        return payload.substr(1U);
+    }
+    return "<error>";
+}
+
 bool is_unknown(const std::string& type) {
     return type.empty() || type == "<unknown>" || type == "<error>";
 }
@@ -512,10 +537,13 @@ private:
             }
             if (expression.text == "&") return operand + "*";
             if (expression.text == "*") {
-                if (!is_unknown(operand) && !operand.empty() && operand.back() == '*') {
-                    return operand.substr(0U, operand.size() - 1U);
+                if (is_unknown(operand)) return operand.empty() ? "<unknown>" : operand;
+                if (!is_pointer_type(operand)) {
+                    error("XSEM0037", "Dereference requires a pointer operand, not '" + operand + "'",
+                          expression.span);
+                    return "<error>";
                 }
-                return "<unknown>";
+                return pointee_type(operand);
             }
             return operand;
         }

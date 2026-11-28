@@ -317,4 +317,43 @@ void run_semantic_tests(int& passed, int& failed) {
         semantic_require(result.diagnostics[0].span.source_id == id,
                          "parser diagnostic should preserve source id");
     }, passed, failed);
+    semantic_case("A078_dereference_rejects_boolean_non_pointer", [&] {
+        invalid("function Main(bool flag) { bool value = *flag; }", "XSEM0037");
+    }, passed, failed);
+    semantic_case("A079_dereference_rejects_numeric_non_pointer", [&] {
+        invalid("function Main() { int value = *1; }", "XSEM0037");
+    }, passed, failed);
+    semantic_case("A080_suffix_pointer_dereference_infers_pointee", [&] {
+        const auto result = semantic_result("function Value(int* pointer) { return *pointer; }");
+        semantic_require(result.succeeded(), "suffix pointer dereference should be valid");
+        semantic_require(result.functions[0].inferred_return_type == "int",
+                         "suffix pointer should dereference to int");
+    }, passed, failed);
+    semantic_case("A081_prefix_pointer_dereference_infers_pointee", [&] {
+        const auto result = semantic_result("function Value(*int pointer) { return *pointer; }");
+        semantic_require(result.succeeded(), "prefix pointer dereference should be valid");
+        semantic_require(result.functions[0].inferred_return_type == "int",
+                         "prefix pointer should dereference to int");
+    }, passed, failed);
+    semantic_case("A082_boolean_prefix_pointee_is_not_numeric", [&] {
+        invalid("function Main(*bool pointer) { float base = 1.0; float value = base + *pointer; }",
+                "XSEM0029");
+    }, passed, failed);
+    semantic_case("A083_unknown_dereference_does_not_cascade", [&] {
+        const auto result = semantic_result("function Main() { int value = *missing; }");
+        semantic_require(has_code(result, "XSEM0008"), "unresolved identifier diagnostic expected");
+        semantic_require(!has_code(result, "XSEM0037"), "unknown operand must not cascade into dereference error");
+    }, passed, failed);
+    semantic_case("A084_mixed_pointer_layers_strip_suffix_first", [&] {
+        const auto result = semantic_result("function Value(*int* pointer) { return **pointer; }");
+        semantic_require(result.succeeded(), "mixed pointer layers should be valid");
+        semantic_require(result.functions[0].inferred_return_type == "int",
+                         "dereference should remove exactly one suffix then one prefix layer");
+    }, passed, failed);
+    semantic_case("A085_borrow_prefixed_pointer_is_dereferenceable", [&] {
+        const auto result = semantic_result("function CopyValue(borrow *Device device) { return *device; }");
+        semantic_require(result.succeeded(), "borrow-prefixed pointer dereference should be valid");
+        semantic_require(result.functions[0].inferred_return_type == "Device",
+                         "borrow mode should not hide the pointer's pointee type");
+    }, passed, failed);
 }
